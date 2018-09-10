@@ -4,3 +4,5 @@ version = "0.1.0"
 authors = ["Mattias Päivärinta <mattias@paivarinta.se>"]
 
 [dependencies]
+pest = "^1.0"
+pest_derive = "^1.0"

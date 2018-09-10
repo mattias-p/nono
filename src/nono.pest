@@ -1,0 +1,3 @@
+digit = _{ '0'..'9' }
+number = { digit+ }
+clue = { number ~ (" " ~ number)+ }
