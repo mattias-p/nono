@@ -1,3 +1,4 @@
 digit = _{ '0'..'9' }
 number = { digit+ }
-clue = { number ~ (" " ~ number)+ }
+clue = { number ~ (" " ~ number)* | "" }
+clue_list = { clue ~ ("," ~ clue)* }

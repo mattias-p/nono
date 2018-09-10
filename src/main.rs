@@ -4,6 +4,7 @@ extern crate pest_derive;
 
 use pest::iterators::Pair;
 use pest::Parser;
+use std::fmt;
 
 #[derive(Parser)]
 #[grammar = "nono.pest"]
@@ -22,10 +23,42 @@ impl<'a> From<Pair<'a, Rule>> for Clue {
     }
 }
 
+impl fmt::Display for Clue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some((first, rest)) = self.0.split_first() {
+            write!(f, "{}", first)?;
+            for number in rest {
+                write!(f, " {}", number)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+struct ClueList(Vec<Clue>);
+
+impl<'a> From<Pair<'a, Rule>> for ClueList {
+    fn from(pair: Pair<Rule>) -> Self {
+        assert_eq!(pair.as_rule(), Rule::clue_list);
+        ClueList(pair.into_inner().map(Clue::from).collect())
+    }
+}
+
+impl fmt::Display for ClueList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (first, rest) = self.0.split_first().unwrap();
+        write!(f, "{}", first)?;
+        for number in rest {
+            write!(f, ",{}", number)?;
+        }
+        Ok(())
+    }
+}
+
 fn main() {
-    let clue_pairs = NonoParser::parse(Rule::clue, "1 2 3").unwrap_or_else(|e| panic!("{}", e));
-    for clue_pair in clue_pairs {
-        let clue = Clue::from(clue_pair.clone());
-        println!("{:?}", clue.0);
+    let pairs = NonoParser::parse(Rule::clue_list, "1 2 3,4 5").unwrap_or_else(|e| panic!("{}", e));
+    for pair in pairs {
+        let clue = ClueList::from(pair.clone());
+        println!("{}", clue);
     }
 }
