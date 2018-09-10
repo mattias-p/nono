@@ -1,0 +1,6 @@
+[package]
+name = "nono"
+version = "0.1.0"
+authors = ["Mattias Päivärinta <mattias@paivarinta.se>"]
+
+[dependencies]
