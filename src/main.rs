@@ -10,6 +10,7 @@ use std::fmt;
 #[grammar = "nono.pest"]
 struct NonoParser;
 
+#[derive(Debug, Eq, PartialEq)]
 struct Clue(Vec<usize>);
 
 impl<'a> From<Pair<'a, Rule>> for Clue {
@@ -35,6 +36,7 @@ impl fmt::Display for Clue {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 struct ClueList(Vec<Clue>);
 
 impl<'a> From<Pair<'a, Rule>> for ClueList {
@@ -55,6 +57,7 @@ impl fmt::Display for ClueList {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 enum Cell {
     Filled,
     Crossed,
@@ -86,6 +89,7 @@ impl fmt::Display for Cell {
     }
 }
 
+#[derive(Eq, PartialEq)]
 struct GridLine(Vec<Cell>);
 
 impl<'a> From<Pair<'a, Rule>> for GridLine {
@@ -104,6 +108,7 @@ impl fmt::Display for GridLine {
     }
 }
 
+#[derive(Eq, PartialEq)]
 struct Grid(Vec<GridLine>);
 
 impl<'a> From<Pair<'a, Rule>> for Grid {
@@ -124,6 +129,7 @@ impl fmt::Display for Grid {
     }
 }
 
+#[derive(Eq, PartialEq)]
 struct Puzzle {
     vert_clues: ClueList,
     horz_clues: ClueList,
@@ -161,5 +167,68 @@ fn main() {
         .unwrap_or_else(|e| panic!("{}", e));
     for pair in pairs {
         println!("{}", Puzzle::from(pair));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_roundtrip<T, F>(f: F, orig: T)
+    where
+        F: Fn(&str) -> Vec<T>,
+        T: fmt::Debug + fmt::Display + Eq,
+    {
+        let items = f(&format!("{}", &orig));
+        assert_eq!(items.as_slice(), [orig]);
+    }
+
+    #[test]
+    fn clue() {
+        fn deser(s: &str) -> Vec<Clue> {
+            NonoParser::parse(Rule::clue, s)
+                .unwrap_or_else(|e| panic!("{}", e))
+                .map(Clue::from)
+                .collect()
+        }
+        test_roundtrip(deser, Clue(vec![]));
+        test_roundtrip(deser, Clue(vec![10]));
+        test_roundtrip(deser, Clue(vec![1, 3, 5]));
+    }
+
+    #[test]
+    fn clue_list() {
+        fn deser(s: &str) -> Vec<ClueList> {
+            NonoParser::parse(Rule::clue_list, s)
+                .unwrap_or_else(|e| panic!("{}", e))
+                .map(ClueList::from)
+                .collect()
+        }
+        test_roundtrip(deser, ClueList(vec![Clue(vec![1])]));
+        test_roundtrip(deser, ClueList(vec![Clue(vec![1]), Clue(vec![2])]));
+        test_roundtrip(deser, ClueList(vec![Clue(vec![]), Clue(vec![2])]));
+        test_roundtrip(deser, ClueList(vec![Clue(vec![1]), Clue(vec![])]));
+        test_roundtrip(
+            deser,
+            ClueList(vec![Clue(vec![1]), Clue(vec![2]), Clue(vec![3])]),
+        );
+        test_roundtrip(
+            deser,
+            ClueList(vec![Clue(vec![1]), Clue(vec![]), Clue(vec![3])]),
+        );
+    }
+
+    #[test]
+    fn cell() {
+        fn deser(s: &str) -> Vec<Cell> {
+            NonoParser::parse(Rule::cell, s)
+                .unwrap_or_else(|e| panic!("{}", e))
+                .map(Cell::from)
+                .collect()
+        }
+        test_roundtrip(deser, Cell::Filled);
+        test_roundtrip(deser, Cell::Crossed);
+        test_roundtrip(deser, Cell::Undecided);
+        test_roundtrip(deser, Cell::Impossible);
     }
 }
