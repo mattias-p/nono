@@ -5,6 +5,8 @@ extern crate pest_derive;
 use pest::iterators::Pair;
 use pest::Parser;
 use std::fmt;
+use std::io;
+use std::io::BufRead;
 
 #[derive(Parser)]
 #[grammar = "nono.pest"]
@@ -162,11 +164,13 @@ impl fmt::Display for Puzzle {
 }
 
 fn main() {
-    let pairs = NonoParser::parse(
-        Rule::puzzle,
-        "[ 1,2 ; 3,4,5 | 1,1,2 ; 3,3 | X.##.X ; .#..#. ]",
-    ).unwrap_or_else(|e| panic!("{}", e));
-    for pair in pairs {
+    let stdin = io::stdin();
+    for line in stdin.lock().lines() {
+        let line = line.unwrap();
+        let pair = NonoParser::parse(Rule::puzzle, &line)
+            .unwrap_or_else(|e| panic!("{}", e))
+            .next()
+            .unwrap();
         println!("{}", Puzzle::from(pair));
     }
 }
