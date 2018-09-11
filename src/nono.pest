@@ -1,12 +1,13 @@
 digit = _{ '0'..'9' }
 number = { digit+ }
 clue = { number ~ ("," ~ number)* | "" }
-clue_list = { clue ~ (" " ~ clue)* }
+clue_list = { clue ~ (";" ~ clue)* }
 filled = { "#" }
 crossed = { "X" }
 undecided = { "." }
 impossible = { "!" }
 cell = { filled | crossed | undecided | impossible }
-grid_line = { cell+ }
-grid = { grid_line ~ (" " ~ grid_line)* }
-puzzle = { "[" ~ clue_list ~ "/" ~ clue_list ~ ("/" ~ grid)? ~ "]" }
+grid_line = ${ cell+ }
+grid = { grid_line ~ (";" ~ grid_line)* }
+puzzle = { "[" ~ clue_list ~ "|" ~ clue_list ~ ("|" ~ grid)? ~ "]" }
+puzzle_list = { puzzle* }

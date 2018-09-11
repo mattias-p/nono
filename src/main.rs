@@ -51,7 +51,7 @@ impl fmt::Display for ClueList {
         let (first, rest) = self.0.split_first().unwrap();
         write!(f, "{}", first)?;
         for number in rest {
-            write!(f, " {}", number)?;
+            write!(f, ";{}", number)?;
         }
         Ok(())
     }
@@ -123,7 +123,7 @@ impl fmt::Display for Grid {
         let (first, rest) = self.0.split_first().unwrap();
         write!(f, "{}", first)?;
         for grid_line in rest {
-            write!(f, " {}", grid_line)?;
+            write!(f, ";{}", grid_line)?;
         }
         Ok(())
     }
@@ -154,16 +154,18 @@ impl<'a> From<Pair<'a, Rule>> for Puzzle {
 impl fmt::Display for Puzzle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(grid) = &self.grid {
-            write!(f, "[{}/{}/{}]", self.vert_clues, self.horz_clues, grid)
+            write!(f, "[{}|{}|{}]", self.vert_clues, self.horz_clues, grid)
         } else {
-            write!(f, "[{}/{}]", self.vert_clues, self.horz_clues)
+            write!(f, "[{}|{}]", self.vert_clues, self.horz_clues)
         }
     }
 }
 
 fn main() {
-    let pairs = NonoParser::parse(Rule::puzzle, "[1,2 3,4,5/1,1,2 3,3/X.##.X .#..#.]")
-        .unwrap_or_else(|e| panic!("{}", e));
+    let pairs = NonoParser::parse(
+        Rule::puzzle,
+        "[ 1,2 ; 3,4,5 | 1,1,2 ; 3,3 | X.##.X ; .#..#. ]",
+    ).unwrap_or_else(|e| panic!("{}", e));
     for pair in pairs {
         println!("{}", Puzzle::from(pair));
     }
