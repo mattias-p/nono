@@ -89,7 +89,7 @@ impl fmt::Display for Cell {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 struct GridLine(Vec<Cell>);
 
 impl<'a> From<Pair<'a, Rule>> for GridLine {
@@ -108,7 +108,7 @@ impl fmt::Display for GridLine {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 struct Grid(Vec<GridLine>);
 
 impl<'a> From<Pair<'a, Rule>> for Grid {
@@ -129,7 +129,7 @@ impl fmt::Display for Grid {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 struct Puzzle {
     vert_clues: ClueList,
     horz_clues: ClueList,
@@ -153,17 +153,16 @@ impl<'a> From<Pair<'a, Rule>> for Puzzle {
 
 impl fmt::Display for Puzzle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.vert_clues, self.horz_clues)?;
         if let Some(grid) = &self.grid {
-            write!(f, "/{}", grid)
+            write!(f, "[{}/{}/{}]", self.vert_clues, self.horz_clues, grid)
         } else {
-            Ok(())
+            write!(f, "[{}/{}]", self.vert_clues, self.horz_clues)
         }
     }
 }
 
 fn main() {
-    let pairs = NonoParser::parse(Rule::puzzle, "1,2 3,4,5:1,1,2 3,3:X.##.X .#..#.")
+    let pairs = NonoParser::parse(Rule::puzzle, "[1,2 3,4,5/1,1,2 3,3/X.##.X .#..#.]")
         .unwrap_or_else(|e| panic!("{}", e));
     for pair in pairs {
         println!("{}", Puzzle::from(pair));
@@ -230,5 +229,64 @@ mod tests {
         test_roundtrip(deser, Cell::Crossed);
         test_roundtrip(deser, Cell::Undecided);
         test_roundtrip(deser, Cell::Impossible);
+    }
+
+    #[test]
+    fn grid_line() {
+        fn deser(s: &str) -> Vec<GridLine> {
+            NonoParser::parse(Rule::grid_line, s)
+                .unwrap_or_else(|e| panic!("{}", e))
+                .map(GridLine::from)
+                .collect()
+        }
+        test_roundtrip(deser, GridLine(vec![Cell::Undecided]));
+        test_roundtrip(deser, GridLine(vec![Cell::Filled, Cell::Crossed]));
+    }
+
+    #[test]
+    fn grid() {
+        fn deser(s: &str) -> Vec<Grid> {
+            NonoParser::parse(Rule::grid, s)
+                .unwrap_or_else(|e| panic!("{}", e))
+                .map(Grid::from)
+                .collect()
+        }
+        test_roundtrip(deser, Grid(vec![GridLine(vec![Cell::Undecided])]));
+        test_roundtrip(
+            deser,
+            Grid(vec![
+                GridLine(vec![Cell::Undecided, Cell::Filled]),
+                GridLine(vec![Cell::Crossed, Cell::Impossible]),
+            ]),
+        );
+    }
+
+    #[test]
+    fn puzzle() {
+        fn deser(s: &str) -> Vec<Puzzle> {
+            NonoParser::parse(Rule::puzzle, s)
+                .unwrap_or_else(|e| panic!("{}", e))
+                .map(Puzzle::from)
+                .collect()
+        }
+        test_roundtrip(
+            deser,
+            Puzzle {
+                vert_clues: ClueList(vec![Clue(vec![]), Clue(vec![1])]),
+                horz_clues: ClueList(vec![Clue(vec![1]), Clue(vec![])]),
+                grid: None,
+            },
+        );
+        test_roundtrip(
+            deser,
+            Puzzle {
+                vert_clues: ClueList(vec![Clue(vec![]), Clue(vec![1])]),
+                horz_clues: ClueList(vec![Clue(vec![1]), Clue(vec![])]),
+                grid: Some(Grid(vec![
+                    GridLine(vec![Cell::Undecided, Cell::Filled]),
+                    GridLine(vec![Cell::Crossed, Cell::Impossible]),
+                ])),
+            },
+        );
     }
 }

@@ -9,4 +9,4 @@ impossible = { "!" }
 cell = { filled | crossed | undecided | impossible }
 grid_line = { cell+ }
 grid = { grid_line ~ (" " ~ grid_line)* }
-puzzle = { clue_list ~ ":" ~ clue_list ~ (":" ~ grid)? }
+puzzle = { "[" ~ clue_list ~ "/" ~ clue_list ~ ("/" ~ grid)? ~ "]" }
