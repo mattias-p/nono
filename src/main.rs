@@ -13,6 +13,7 @@ use parser::GridLine;
 use parser::NonoParser;
 use parser::Rule;
 use pest::Parser;
+use std::fmt;
 use std::io;
 use std::io::BufRead;
 
@@ -87,22 +88,11 @@ impl Puzzle {
         }
     }
     fn into_ast(self) -> parser::Puzzle {
-        let mut i = 0;
         let h = self.horz_clues.0.len();
         let w = self.vert_clues.0.len();
         let mut grid_lines = Vec::with_capacity(w);
-        for _y in 0..h {
-            let mut cells = Vec::with_capacity(w);
-            for _x in 0..w {
-                let cell = match (self.filled.contains(i), self.crossed.contains(i)) {
-                    (false, false) => Cell::Undecided,
-                    (false, true) => Cell::Crossed,
-                    (true, false) => Cell::Filled,
-                    (true, true) => Cell::Impossible,
-                };
-                cells.push(cell);
-                i += 1;
-            }
+        for y in 0..h {
+            let cells = (0..w).map(|x| self.get_xy(x, y)).collect();
             grid_lines.push(GridLine(cells));
         }
         parser::Puzzle {
@@ -111,16 +101,45 @@ impl Puzzle {
             grid: Some(Grid(grid_lines)),
         }
     }
+    fn get(&self, i: usize) -> Cell {
+        match (self.filled.contains(i), self.crossed.contains(i)) {
+            (false, false) => Cell::Undecided,
+            (false, true) => Cell::Crossed,
+            (true, false) => Cell::Filled,
+            (true, true) => Cell::Impossible,
+        }
+    }
+    fn get_xy(&self, x: usize, y: usize) -> Cell {
+        self.get(y * self.horz_clues.0.len() + x)
+    }
+}
+
+impl fmt::Display for Puzzle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let h = self.horz_clues.0.len();
+        let w = self.vert_clues.0.len();
+        for y in 0..h {
+            for x in 0..w {
+                write!(f, "{}", self.get_xy(x, y))?;
+            }
+            write!(f, "\n")?;
+        }
+        Ok(())
+    }
 }
 
 fn main() {
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         let line = line.unwrap();
-        let pair = NonoParser::parse(Rule::puzzle, &line)
+        let ast = NonoParser::parse(Rule::puzzle, &line)
             .unwrap_or_else(|e| panic!("{}", e))
             .next()
+            .map(parser::Puzzle::from)
             .unwrap();
-        println!("{}", parser::Puzzle::from(pair));
+        match Puzzle::try_from_ast(ast) {
+            Ok(puzzle) => println!("{}", puzzle),
+            Err(e) => panic!("{}", e),
+        }
     }
 }
