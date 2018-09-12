@@ -8,7 +8,6 @@ mod parser;
 use fixedbitset::FixedBitSet;
 use parser::Cell;
 use parser::ClueList;
-use parser::Grid;
 use parser::GridLine;
 use parser::NonoParser;
 use parser::Rule;
@@ -17,11 +16,47 @@ use std::fmt;
 use std::io;
 use std::io::BufRead;
 
+struct Grid {
+    width: usize,
+    filled: FixedBitSet,
+    crossed: FixedBitSet,
+}
+
+impl Grid {
+    fn index(&self, x: usize, y: usize) -> usize {
+        y * self.width + x
+    }
+    fn get_xy(&self, x: usize, y: usize) -> Cell {
+        self.get(self.index(x, y))
+    }
+    fn get(&self, i: usize) -> Cell {
+        match (self.filled.contains(i), self.crossed.contains(i)) {
+            (false, false) => Cell::Undecided,
+            (false, true) => Cell::Crossed,
+            (true, false) => Cell::Filled,
+            (true, true) => Cell::Impossible,
+        }
+    }
+    fn fill_xy(&mut self, x: usize, y: usize) {
+        let i = self.index(x, y);
+        self.fill(i);
+    }
+    fn fill(&mut self, i: usize) {
+        self.filled.put(i);
+    }
+    fn cross_xy(&mut self, x: usize, y: usize) {
+        let i = self.index(x, y);
+        self.cross(i);
+    }
+    fn cross(&mut self, i: usize) {
+        self.crossed.put(i);
+    }
+}
+
 struct Puzzle {
     vert_clues: ClueList,
     horz_clues: ClueList,
-    filled: FixedBitSet,
-    crossed: FixedBitSet,
+    grid: Grid,
 }
 
 impl Puzzle {
@@ -66,8 +101,11 @@ impl Puzzle {
             Ok(Puzzle {
                 vert_clues: ast.vert_clues,
                 horz_clues: ast.horz_clues,
-                filled,
-                crossed,
+                grid: Grid {
+                    width: w,
+                    filled,
+                    crossed,
+                },
             })
         } else {
             let filled = FixedBitSet::with_capacity(w * h);
@@ -75,8 +113,11 @@ impl Puzzle {
             Ok(Puzzle {
                 vert_clues: ast.vert_clues,
                 horz_clues: ast.horz_clues,
-                filled,
-                crossed,
+                grid: Grid {
+                    width: w,
+                    filled,
+                    crossed,
+                },
             })
         }
     }
@@ -92,28 +133,14 @@ impl Puzzle {
         let w = self.vert_clues.0.len();
         let mut grid_lines = Vec::with_capacity(w);
         for y in 0..h {
-            let cells = (0..w).map(|x| self.get_xy(x, y)).collect();
+            let cells = (0..w).map(|x| self.grid.get_xy(x, y)).collect();
             grid_lines.push(GridLine(cells));
         }
         parser::Puzzle {
             horz_clues: self.horz_clues,
             vert_clues: self.vert_clues,
-            grid: Some(Grid(grid_lines)),
+            grid: Some(parser::Grid(grid_lines)),
         }
-    }
-    fn get(&self, i: usize) -> Cell {
-        match (self.filled.contains(i), self.crossed.contains(i)) {
-            (false, false) => Cell::Undecided,
-            (false, true) => Cell::Crossed,
-            (true, false) => Cell::Filled,
-            (true, true) => Cell::Impossible,
-        }
-    }
-    fn index(&self, x: usize, y: usize) -> usize {
-        y * self.horz_clues.0.len() + x
-    }
-    fn get_xy(&self, x: usize, y: usize) -> Cell {
-        self.get(self.index(x, y))
     }
     fn width(&self) -> usize {
         self.vert_clues.0.len()
@@ -148,7 +175,7 @@ impl fmt::Display for Puzzle {
             write!(f, "{: >width$}", "", width = 3 * max_horz_clue_len)?;
             for clue in &self.vert_clues.0 {
                 if clue.0.len() > max_vert_clue_len - i - 1 {
-                    write!(f, "{: >2}", clue.0[max_vert_clue_len - i - 1])?;
+                    write!(f, "{: >2}", clue.0[clue.0.len() - (max_vert_clue_len - i)])?;
                 } else {
                     write!(f, "  ")?;
                 }
@@ -158,13 +185,13 @@ impl fmt::Display for Puzzle {
         for (y, clue) in self.horz_clues.0.iter().enumerate() {
             for i in 0..max_horz_clue_len {
                 if clue.0.len() > max_horz_clue_len - i - 1 {
-                    write!(f, " {: >2}", clue.0[max_horz_clue_len - i - 1])?;
+                    write!(f, " {: >2}", clue.0[clue.0.len() - (max_horz_clue_len - i)])?;
                 } else {
                     write!(f, "   ")?;
                 }
             }
             for x in 0..w {
-                write!(f, " {}", self.get_xy(x, y))?;
+                write!(f, " {}", self.grid.get_xy(x, y))?;
             }
             write!(f, "\n")?;
         }
@@ -180,16 +207,14 @@ struct BasicFreedom;
 
 impl Pass for BasicFreedom {
     fn run(puzzle: &mut Puzzle) {
-        let horz_clues = &puzzle.horz_clues.0;
-        for (y, clue) in horz_clues.iter().enumerate() {
+        for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
             let sum: usize = clue.0.iter().sum();
             let freedom: usize = puzzle.width() - (sum + clue.0.len() - 1);
             let mut x0 = 0;
             for number in clue.0.iter() {
                 if *number > freedom {
                     for x1 in x0 + freedom..x0 + number {
-                        let i = puzzle.index(x1, y);
-                        puzzle.filled.put(i);
+                        puzzle.grid.fill_xy(x1, y);
                     }
                 }
                 x0 += number + 1;
@@ -202,8 +227,7 @@ impl Pass for BasicFreedom {
             for number in clue.0.iter() {
                 if *number > freedom {
                     for y1 in y0 + freedom..y0 + number {
-                        let i = puzzle.index(x, y1);
-                        puzzle.filled.put(i);
+                        puzzle.grid.fill_xy(x, y1);
                     }
                 }
                 y0 += number + 1;
