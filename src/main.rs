@@ -121,13 +121,48 @@ impl Puzzle {
     fn height(&self) -> usize {
         self.horz_clues.0.len()
     }
+    fn max_horz_clue_len(&self) -> usize {
+        self.horz_clues
+            .0
+            .iter()
+            .map(|clue| clue.0.len())
+            .max()
+            .unwrap()
+    }
+    fn max_vert_clue_len(&self) -> usize {
+        self.vert_clues
+            .0
+            .iter()
+            .map(|clue| clue.0.len())
+            .max()
+            .unwrap()
+    }
 }
 
 impl fmt::Display for Puzzle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let h = self.horz_clues.0.len();
         let w = self.vert_clues.0.len();
-        for y in 0..h {
+        let max_vert_clue_len = self.max_vert_clue_len();
+        let max_horz_clue_len = self.max_horz_clue_len();
+        for i in 0..max_vert_clue_len {
+            write!(f, "{: >width$}", "", width = 3 * max_horz_clue_len)?;
+            for clue in &self.vert_clues.0 {
+                if clue.0.len() > max_vert_clue_len - i - 1 {
+                    write!(f, "{: >2}", clue.0[max_vert_clue_len - i - 1])?;
+                } else {
+                    write!(f, "  ")?;
+                }
+            }
+            write!(f, "\n")?;
+        }
+        for (y, clue) in self.horz_clues.0.iter().enumerate() {
+            for i in 0..max_horz_clue_len {
+                if clue.0.len() > max_horz_clue_len - i - 1 {
+                    write!(f, " {: >2}", clue.0[max_horz_clue_len - i - 1])?;
+                } else {
+                    write!(f, "   ")?;
+                }
+            }
             for x in 0..w {
                 write!(f, " {}", self.get_xy(x, y))?;
             }
