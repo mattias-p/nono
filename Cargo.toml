@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Mattias Päivärinta <mattias@paivarinta.se>"]
 
 [dependencies]
+fixedbitset = "0.1.9"
 pest = "^1.0"
 pest_derive = "^1.0"

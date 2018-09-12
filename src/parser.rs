@@ -6,7 +6,7 @@ use std::fmt;
 pub struct NonoParser;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Clue(Vec<usize>);
+pub struct Clue(pub Vec<usize>);
 
 impl<'a> From<Pair<'a, Rule>> for Clue {
     fn from(pair: Pair<Rule>) -> Self {
@@ -32,7 +32,7 @@ impl fmt::Display for Clue {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct ClueList(Vec<Clue>);
+pub struct ClueList(pub Vec<Clue>);
 
 impl<'a> From<Pair<'a, Rule>> for ClueList {
     fn from(pair: Pair<Rule>) -> Self {
@@ -85,7 +85,7 @@ impl fmt::Display for Cell {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct GridLine(Vec<Cell>);
+pub struct GridLine(pub Vec<Cell>);
 
 impl<'a> From<Pair<'a, Rule>> for GridLine {
     fn from(pair: Pair<Rule>) -> Self {
@@ -104,7 +104,7 @@ impl fmt::Display for GridLine {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Grid(Vec<GridLine>);
+pub struct Grid(pub Vec<GridLine>);
 
 impl<'a> From<Pair<'a, Rule>> for Grid {
     fn from(pair: Pair<Rule>) -> Self {
@@ -126,9 +126,9 @@ impl fmt::Display for Grid {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Puzzle {
-    vert_clues: ClueList,
-    horz_clues: ClueList,
-    grid: Option<Grid>,
+    pub vert_clues: ClueList,
+    pub horz_clues: ClueList,
+    pub grid: Option<Grid>,
 }
 
 impl<'a> From<Pair<'a, Rule>> for Puzzle {
