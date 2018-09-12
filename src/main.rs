@@ -109,8 +109,17 @@ impl Puzzle {
             (true, true) => Cell::Impossible,
         }
     }
+    fn index(&self, x: usize, y: usize) -> usize {
+        y * self.horz_clues.0.len() + x
+    }
     fn get_xy(&self, x: usize, y: usize) -> Cell {
-        self.get(y * self.horz_clues.0.len() + x)
+        self.get(self.index(x, y))
+    }
+    fn width(&self) -> usize {
+        self.vert_clues.0.len()
+    }
+    fn height(&self) -> usize {
+        self.horz_clues.0.len()
     }
 }
 
@@ -120,11 +129,51 @@ impl fmt::Display for Puzzle {
         let w = self.vert_clues.0.len();
         for y in 0..h {
             for x in 0..w {
-                write!(f, "{}", self.get_xy(x, y))?;
+                write!(f, " {}", self.get_xy(x, y))?;
             }
             write!(f, "\n")?;
         }
         Ok(())
+    }
+}
+
+trait Pass {
+    fn run(puzzle: &mut Puzzle);
+}
+
+struct BasicFreedom;
+
+impl Pass for BasicFreedom {
+    fn run(puzzle: &mut Puzzle) {
+        let horz_clues = &puzzle.horz_clues.0;
+        for (y, clue) in horz_clues.iter().enumerate() {
+            let sum: usize = clue.0.iter().sum();
+            let freedom: usize = puzzle.width() - (sum + clue.0.len() - 1);
+            let mut x0 = 0;
+            for number in clue.0.iter() {
+                if *number > freedom {
+                    for x1 in x0 + freedom..x0 + number {
+                        let i = puzzle.index(x1, y);
+                        puzzle.filled.put(i);
+                    }
+                }
+                x0 += number + 1;
+            }
+        }
+        for (x, clue) in puzzle.vert_clues.0.iter().enumerate() {
+            let sum: usize = clue.0.iter().sum();
+            let freedom: usize = puzzle.height() - (sum + clue.0.len() - 1);
+            let mut y0 = 0;
+            for number in clue.0.iter() {
+                if *number > freedom {
+                    for y1 in y0 + freedom..y0 + number {
+                        let i = puzzle.index(x, y1);
+                        puzzle.filled.put(i);
+                    }
+                }
+                y0 += number + 1;
+            }
+        }
     }
 }
 
@@ -138,7 +187,10 @@ fn main() {
             .map(parser::Puzzle::from)
             .unwrap();
         match Puzzle::try_from_ast(ast) {
-            Ok(puzzle) => println!("{}", puzzle),
+            Ok(mut puzzle) => {
+                BasicFreedom::run(&mut puzzle);
+                println!("{}", puzzle);
+            }
             Err(e) => panic!("{}", e),
         }
     }
