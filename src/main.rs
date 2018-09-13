@@ -26,10 +26,8 @@ impl Grid {
     fn index(&self, x: usize, y: usize) -> usize {
         y * self.width + x
     }
-    fn get_xy(&self, x: usize, y: usize) -> Cell {
-        self.get(self.index(x, y))
-    }
-    fn get(&self, i: usize) -> Cell {
+    fn get(&self, x: usize, y: usize) -> Cell {
+        let i = self.index(x, y);
         match (self.filled.contains(i), self.crossed.contains(i)) {
             (false, false) => Cell::Undecided,
             (false, true) => Cell::Crossed,
@@ -37,30 +35,20 @@ impl Grid {
             (true, true) => Cell::Impossible,
         }
     }
-    fn fill_xy(&mut self, x: usize, y: usize) {
+    fn fill(&mut self, x: usize, y: usize) {
         let i = self.index(x, y);
-        self.fill(i);
-    }
-    fn fill(&mut self, i: usize) {
         self.filled.put(i);
     }
-    fn cross_xy(&mut self, x: usize, y: usize) {
+    fn cross(&mut self, x: usize, y: usize) {
         let i = self.index(x, y);
-        self.cross(i);
-    }
-    fn cross(&mut self, i: usize) {
         self.crossed.put(i);
     }
-    fn is_crossed_xy(&self, x: usize, y: usize) -> bool {
-        self.is_crossed(self.index(x, y))
-    }
-    fn is_crossed(&self, i: usize) -> bool {
+    fn is_crossed(&self, x: usize, y: usize) -> bool {
+        let i = self.index(x, y);
         self.crossed.contains(i)
     }
-    fn is_filled_xy(&self, x: usize, y: usize) -> bool {
-        self.is_filled(self.index(x, y))
-    }
-    fn is_filled(&self, i: usize) -> bool {
+    fn is_filled(&self, x: usize, y: usize) -> bool {
+        let i = self.index(x, y);
         self.filled.contains(i)
     }
 }
@@ -145,7 +133,7 @@ impl Puzzle {
         let w = self.vert_clues.0.len();
         let mut grid_lines = Vec::with_capacity(w);
         for y in 0..h {
-            let cells = (0..w).map(|x| self.grid.get_xy(x, y)).collect();
+            let cells = (0..w).map(|x| self.grid.get(x, y)).collect();
             grid_lines.push(GridLine(cells));
         }
         parser::Puzzle {
@@ -203,7 +191,7 @@ impl fmt::Display for Puzzle {
                 }
             }
             for x in 0..w {
-                write!(f, " {}", self.grid.get_xy(x, y))?;
+                write!(f, " {}", self.grid.get(x, y))?;
             }
             write!(f, "\n")?;
         }
@@ -226,7 +214,7 @@ impl Pass for BasicFreedom {
             for number in clue.0.iter() {
                 if *number > freedom {
                     for x1 in x0 + freedom..x0 + number {
-                        puzzle.grid.fill_xy(x1, y);
+                        puzzle.grid.fill(x1, y);
                     }
                 }
                 x0 += number + 1;
@@ -239,7 +227,7 @@ impl Pass for BasicFreedom {
             for number in clue.0.iter() {
                 if *number > freedom {
                     for y1 in y0 + freedom..y0 + number {
-                        puzzle.grid.fill_xy(x, y1);
+                        puzzle.grid.fill(x, y1);
                     }
                 }
                 y0 += number + 1;
@@ -258,15 +246,15 @@ impl Pass for Freedom2 {
             for number in clue.0.iter() {
                 let mut x = x0;
                 while x < x0 + number {
-                    if puzzle.grid.is_crossed_xy(x, y) {
+                    if puzzle.grid.is_crossed(x, y) {
                         // pushing cross
                         x0 = x + 1;
                     }
                     x += 1;
                 }
-                if puzzle.grid.is_filled_xy(x, y) {
+                if puzzle.grid.is_filled(x, y) {
                     // pulling fill
-                    while puzzle.grid.is_filled_xy(x, y) {
+                    while puzzle.grid.is_filled(x, y) {
                         x += 1;
                     }
                     // TODO check for impossibility
@@ -281,16 +269,16 @@ impl Pass for Freedom2 {
                 x1 -= 1;
                 let mut x = x1 - 1;
                 while x + 1 < x1 - number {
-                    if puzzle.grid.is_crossed_xy(x, y) {
+                    if puzzle.grid.is_crossed(x, y) {
                         // pushing cross
                         x1 = x;
                     }
                     x -= 1;
                 }
 
-                if puzzle.grid.is_filled_xy(x, y) {
+                if puzzle.grid.is_filled(x, y) {
                     // pulling fill
-                    while puzzle.grid.is_filled_xy(x, y) {
+                    while puzzle.grid.is_filled(x, y) {
                         x -= 1;
                     }
                     // TODO check for impossibility
@@ -307,15 +295,15 @@ impl Pass for Freedom2 {
             {
                 if *max_end == *min_start + number {
                     if *min_start > 0 {
-                        puzzle.grid.cross_xy(min_start - 1, y);
+                        puzzle.grid.cross(min_start - 1, y);
                     }
                     if *max_end < puzzle.width() {
-                        puzzle.grid.cross_xy(*max_end, y);
+                        puzzle.grid.cross(*max_end, y);
                     }
                 }
                 if *max_end < *min_start + 2 * number {
                     for x in max_end - number..min_start + number {
-                        puzzle.grid.fill_xy(x, y);
+                        puzzle.grid.fill(x, y);
                     }
                 }
             }
