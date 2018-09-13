@@ -51,6 +51,18 @@ impl Grid {
     fn cross(&mut self, i: usize) {
         self.crossed.put(i);
     }
+    fn is_crossed_xy(&self, x: usize, y: usize) -> bool {
+        self.is_crossed(self.index(x, y))
+    }
+    fn is_crossed(&self, i: usize) -> bool {
+        self.crossed.contains(i)
+    }
+    fn is_filled_xy(&self, x: usize, y: usize) -> bool {
+        self.is_filled(self.index(x, y))
+    }
+    fn is_filled(&self, i: usize) -> bool {
+        self.filled.contains(i)
+    }
 }
 
 struct Puzzle {
@@ -236,6 +248,81 @@ impl Pass for BasicFreedom {
     }
 }
 
+struct Freedom2;
+
+impl Pass for Freedom2 {
+    fn run(puzzle: &mut Puzzle) {
+        for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
+            let mut min_starts = Vec::with_capacity(clue.0.len());
+            let mut x0 = 0;
+            for number in clue.0.iter() {
+                let mut x = x0;
+                while x < x0 + number {
+                    if puzzle.grid.is_crossed_xy(x, y) {
+                        // pushing cross
+                        x0 = x + 1;
+                    }
+                    x += 1;
+                }
+                if puzzle.grid.is_filled_xy(x, y) {
+                    // pulling fill
+                    while puzzle.grid.is_filled_xy(x, y) {
+                        x += 1;
+                    }
+                    // TODO check for impossibility
+                    x0 = x - number;
+                }
+                min_starts.push(x0);
+                x0 = x0 + 1 + number;
+            }
+            let mut max_ends = Vec::with_capacity(clue.0.len());
+            let mut x1 = puzzle.width() + 1;
+            for number in clue.0.iter().rev() {
+                x1 -= 1;
+                let mut x = x1 - 1;
+                while x + 1 < x1 - number {
+                    if puzzle.grid.is_crossed_xy(x, y) {
+                        // pushing cross
+                        x1 = x;
+                    }
+                    x -= 1;
+                }
+
+                if puzzle.grid.is_filled_xy(x, y) {
+                    // pulling fill
+                    while puzzle.grid.is_filled_xy(x, y) {
+                        x -= 1;
+                    }
+                    // TODO check for impossibility
+                    x1 = x + 1 + number;
+                }
+                max_ends.push(x1);
+                x1 = x1 - number;
+            }
+            for ((number, min_start), max_end) in clue
+                .0
+                .iter()
+                .zip(min_starts.iter())
+                .zip(max_ends.iter().rev())
+            {
+                if *max_end == *min_start + number {
+                    if *min_start > 0 {
+                        puzzle.grid.cross_xy(min_start - 1, y);
+                    }
+                    if *max_end < puzzle.width() {
+                        puzzle.grid.cross_xy(*max_end, y);
+                    }
+                }
+                if *max_end < *min_start + 2 * number {
+                    for x in max_end - number..min_start + number {
+                        puzzle.grid.fill_xy(x, y);
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn main() {
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
@@ -247,7 +334,7 @@ fn main() {
             .unwrap();
         match Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
-                BasicFreedom::run(&mut puzzle);
+                Freedom2::run(&mut puzzle);
                 println!("{}", puzzle);
             }
             Err(e) => panic!("{}", e),
