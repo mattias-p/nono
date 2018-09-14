@@ -347,10 +347,12 @@ impl Pass for Freedom2 {
                 .zip(min_starts.iter().skip(1).chain(iter::once(&w)))
             {
                 assert!(min_start + number <= *max_end);
-                //println!(
-                //"{}  {}/{}/{}  {}",
-                //prev_max_end, min_start, number, max_end, next_min_start,
-                //);
+                /*
+                println!(
+                    "{}  {}/{}/{}  {}",
+                    prev_max_end, min_start, number, max_end, next_min_start,
+                );
+                */
                 if *max_end == *min_start + number {
                     if *min_start > 0 {
                         puzzle.grid.cross(min_start - 1, y, transposed);
@@ -362,30 +364,34 @@ impl Pass for Freedom2 {
                     continue;
                 }
                 if *min_start + 2 * number > *max_end {
-                    //println!("middle {}..{}", max_end - number, min_start + number);
+                    let guaranteed_start = max_end - number;
+                    let guaranteed_end = min_start + number;
+                    let turf_start = *prev_max_end.max(min_start);
+                    let turf_end = *max_end.max(next_min_start);
+                    //println!("middle {}..{}", guaranteed_start, guaranteed_end);
                     puzzle
                         .grid
-                        .fill_horz(max_end - number..min_start + number, y, transposed);
+                        .fill_horz(guaranteed_start..guaranteed_end, y, transposed);
 
-                    /*
-                    if let Some(x0) = (*prev_max_end.max(min_start)..max_end - number)
+                    if let Some(x0) = (turf_start..guaranteed_start)
                         .find(|x| puzzle.grid.is_filled(*x, y, transposed))
                     {
-                        println!("found {}", x0);
-                        puzzle.grid.fill_horz(x0..max_end - number, y, transposed);
-                        puzzle.grid.cross_horz(x0 + number..*max_end, y, transposed);
+                        //println!("A found  {}", x0);
+                        puzzle.grid.fill_horz(x0..guaranteed_start, y, transposed);
+                        puzzle.grid.cross_horz(x0 + number..turf_end, y, transposed);
+                        //println!("done");
                     }
-                    if let Some(x1) = (min_start + number..*next_min_start.min(max_end))
+                    if let Some(x1) = (guaranteed_end..turf_end)
                         .rev()
                         .find(|x| puzzle.grid.is_filled(*x, y, transposed))
                     {
-                        println!("found {}", x1);
-                        puzzle.grid.fill_horz(min_start + number..x1, y, transposed);
+                        //println!("B found {}", x1);
+                        puzzle.grid.fill_horz(guaranteed_end..x1, y, transposed);
                         puzzle
                             .grid
-                            .cross_horz(*min_start..x1 - number, y, transposed);
+                            .cross_horz(turf_start..x1 - number, y, transposed);
+                        //println!("done");
                     }
-                    */
                 }
                 /*
                 if let Some(x0) = (*prev_max_end.max(min_start)..*max_end.min(next_min_start))
