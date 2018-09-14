@@ -337,7 +337,7 @@ impl Pass for Freedom2 {
                 max_ends.push(x1);
                 x1 -= number;
             }
-            //println!("\nclue2  {}", &clue);
+            println!("\nclue2  {}", &clue);
             for ((((number, min_start), max_end), prev_max_end), next_min_start) in clue
                 .0
                 .iter()
@@ -347,12 +347,11 @@ impl Pass for Freedom2 {
                 .zip(min_starts.iter().skip(1).chain(iter::once(&w)))
             {
                 assert!(min_start + number <= *max_end);
-                /*
                 println!(
                     "{}  {}/{}/{}  {}",
                     prev_max_end, min_start, number, max_end, next_min_start,
                 );
-                */
+                println!("{}", &puzzle);
                 if *max_end == *min_start + number {
                     if *min_start > 0 {
                         puzzle.grid.cross(min_start - 1, y, transposed);
@@ -364,11 +363,16 @@ impl Pass for Freedom2 {
                     continue;
                 }
 
+                let turf_start = *prev_max_end.max(min_start);
+                let turf_end = *max_end.max(next_min_start);
+
                 if *min_start + 2 * number > *max_end {
                     let guaranteed_start = max_end - number;
                     let guaranteed_end = min_start + number;
-                    let turf_start = *prev_max_end.max(min_start);
-                    let turf_end = *max_end.max(next_min_start);
+                    println!(
+                        "{} {} {} {} {} {}",
+                        min_start, turf_start, guaranteed_start, guaranteed_end, turf_end, max_end
+                    );
 
                     puzzle
                         .grid
@@ -390,6 +394,37 @@ impl Pass for Freedom2 {
                             .grid
                             .cross_horz(turf_start..x1 - number, y, transposed);
                     }
+                } else {
+                    println!("{} {} - - {} {}", min_start, turf_start, turf_end, max_end);
+                    if let Some(x0) =
+                        (turf_start..turf_end).find(|x| puzzle.grid.is_filled(*x, y, transposed))
+                    {
+                        println!("x0 {}", x0);
+                        puzzle.grid.cross_horz(x0 + number..turf_end, y, transposed);
+                        puzzle.grid.cross_horz(
+                            turf_start..(x0 + 1).max(*number) - number,
+                            y,
+                            transposed,
+                        );
+
+                        if let Some(x1) = (x0..turf_end)
+                            .rev()
+                            .find(|x| puzzle.grid.is_filled(*x, y, transposed))
+                        {
+                            puzzle.grid.fill_horz(x0 + 1..x1, y, transposed);
+                            puzzle.grid.cross_horz(
+                                turf_start..x1.max(*number) - number,
+                                y,
+                                transposed,
+                            );
+                        } else {
+                            puzzle.grid.cross_horz(
+                                turf_start..x0.max(*number) - number,
+                                y,
+                                transposed,
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -409,12 +444,12 @@ fn main() {
             Ok(mut puzzle) => {
                 puzzle.apply(&Freedom2);
                 println!("{}", puzzle);
-                puzzle.apply(&Freedom2);
-                println!("{}", puzzle);
-                puzzle.apply(&Freedom2);
-                println!("{}", puzzle);
-                puzzle.apply(&Freedom2);
-                println!("{}", puzzle);
+                //puzzle.apply(&Freedom2);
+                //println!("{}", puzzle);
+                //puzzle.apply(&Freedom2);
+                //println!("{}", puzzle);
+                //puzzle.apply(&Freedom2);
+                //println!("{}", puzzle);
             }
             Err(e) => panic!("{}", e),
         }
