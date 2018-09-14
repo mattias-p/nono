@@ -338,7 +338,10 @@ impl Pass for Freedom2 {
                 range_ends.push(x1);
                 x1 -= number;
             }
-            println!("\nclue2  {}", &clue);
+
+            puzzle.grid.cross_horz(0..range_starts[0], y, transposed);
+            puzzle.grid.cross_horz(range_ends[0]..w, y, transposed);
+
             for ((((number, min_start), max_end), prev_max_end), next_min_start) in clue
                 .0
                 .iter()
