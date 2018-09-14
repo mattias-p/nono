@@ -363,12 +363,13 @@ impl Pass for Freedom2 {
                     }
                     continue;
                 }
+
                 if *min_start + 2 * number > *max_end {
                     let guaranteed_start = max_end - number;
                     let guaranteed_end = min_start + number;
                     let turf_start = *prev_max_end.max(min_start);
                     let turf_end = *max_end.max(next_min_start);
-                    //println!("middle {}..{}", guaranteed_start, guaranteed_end);
+
                     puzzle
                         .grid
                         .fill_horz(guaranteed_start..guaranteed_end, y, transposed);
@@ -376,46 +377,20 @@ impl Pass for Freedom2 {
                     if let Some(x0) = (turf_start..guaranteed_start)
                         .find(|x| puzzle.grid.is_filled(*x, y, transposed))
                     {
-                        //println!("A found  {}", x0);
                         puzzle.grid.fill_horz(x0..guaranteed_start, y, transposed);
                         puzzle.grid.cross_horz(x0 + number..turf_end, y, transposed);
-                        //println!("done");
                     }
+
                     if let Some(x1) = (guaranteed_end..turf_end)
                         .rev()
                         .find(|x| puzzle.grid.is_filled(*x, y, transposed))
                     {
-                        //println!("B found {}", x1);
                         puzzle.grid.fill_horz(guaranteed_end..x1, y, transposed);
                         puzzle
                             .grid
                             .cross_horz(turf_start..x1 - number, y, transposed);
-                        //println!("done");
                     }
                 }
-                /*
-                if let Some(x0) = (*prev_max_end.max(min_start)..*max_end.min(next_min_start))
-                    .find(|x| puzzle.grid.is_filled(*x, y, transposed))
-                {
-                    if x0 > *number {
-                        puzzle.grid.cross_horz(
-                            *prev_max_end.max(min_start)..x0 - number,
-                            y,
-                            transposed,
-                        );
-                    }
-                    if let Some(x1) = (x0..*max_end.min(next_min_start))
-                        .rev()
-                        .find(|x| puzzle.grid.is_filled(*x, y, transposed))
-                    {
-                        puzzle.grid.cross_horz(
-                            *max_end.min(next_min_start)..x1.max(*number) - number,
-                            y,
-                            transposed,
-                        );
-                    }
-                }
-                */
             }
         }
     }
@@ -434,12 +409,12 @@ fn main() {
             Ok(mut puzzle) => {
                 puzzle.apply(&Freedom2);
                 println!("{}", puzzle);
-                //puzzle.apply(&Freedom2);
-                //println!("{}", puzzle);
-                //puzzle.apply(&Freedom2);
-                //println!("{}", puzzle);
-                //puzzle.apply(&Freedom2);
-                //println!("{}", puzzle);
+                puzzle.apply(&Freedom2);
+                println!("{}", puzzle);
+                puzzle.apply(&Freedom2);
+                println!("{}", puzzle);
+                puzzle.apply(&Freedom2);
+                println!("{}", puzzle);
             }
             Err(e) => panic!("{}", e),
         }
