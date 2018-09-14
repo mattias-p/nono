@@ -285,7 +285,8 @@ impl Pass for Freedom2 {
             let mut x0 = 0;
             for number in clue.0.iter() {
                 let mut x = x0;
-                while x < w - number && x < x0 + number {
+                while x < w && x < x0 + number {
+                    println!("checking for cross at  {}", x);
                     if puzzle.grid.is_crossed(x, y, transposed) {
                         //println!("start pushed by cross at {}", x);
                         // pushing cross
@@ -293,14 +294,14 @@ impl Pass for Freedom2 {
                     }
                     x += 1;
                 }
-                if x + 1 < w && puzzle.grid.is_filled(x + 1, y, transposed) {
+                if x + 1 < w && puzzle.grid.is_filled(x, y, transposed) {
                     // pulling fill
-                    while x + 1 < w && puzzle.grid.is_filled(x, y, transposed) {
-                        //println!("start pulled by fill at {}", x);
+                    while x < w && puzzle.grid.is_filled(x, y, transposed) {
+                        println!("start pulled by fill at {}", x);
                         x += 1;
                     }
                     // TODO check for impossibility
-                    x0 = x.max(*number) - number;
+                    x0 = x - number;
                 }
                 assert!(x0 <= w - number);
                 //println!("min start {}", x0);
@@ -364,7 +365,7 @@ impl Pass for Freedom2 {
                 }
 
                 let turf_start = *prev_max_end.max(min_start);
-                let turf_end = *max_end.max(next_min_start);
+                let turf_end = *max_end.min(next_min_start);
 
                 if *min_start + 2 * number > *max_end {
                     let kernel_start = max_end - number;
