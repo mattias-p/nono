@@ -280,43 +280,39 @@ impl Pass for Freedom2 {
         let w = puzzle.clues.width(transposed);
         for (y, clue) in puzzle.clues.horz(transposed).iter().enumerate() {
             //println!("{}", &puzzle);
-            //println!("\nclue1  {}", &clue);
+            //println!("CLUE  {}", clue);
+
             let mut range_starts = Vec::with_capacity(clue.0.len());
             let mut x0 = 0;
             for number in clue.0.iter() {
                 let mut x = x0;
                 while x < w && x < x0 + number {
-                    println!("checking for cross at  {}", x);
                     if puzzle.grid.is_crossed(x, y, transposed) {
-                        //println!("start pushed by cross at {}", x);
                         // pushing cross
                         x0 = x + 1;
                     }
                     x += 1;
                 }
-                if x + 1 < w && puzzle.grid.is_filled(x, y, transposed) {
+                if x < w && puzzle.grid.is_filled(x, y, transposed) {
                     // pulling fill
                     while x < w && puzzle.grid.is_filled(x, y, transposed) {
-                        println!("start pulled by fill at {}", x);
                         x += 1;
                     }
                     // TODO check for impossibility
                     x0 = x - number;
                 }
                 assert!(x0 <= w - number);
-                //println!("min start {}", x0);
                 range_starts.push(x0);
                 x0 += 1 + number;
             }
+
             let mut range_ends = Vec::with_capacity(clue.0.len());
             let mut x1 = w + 1;
             for number in clue.0.iter().rev() {
-                //println!("rev number {}", number);
                 x1 -= 1;
                 let mut x = x1 - 1;
                 while x > 0 && x > x1 - number {
                     if puzzle.grid.is_crossed(x, y, transposed) {
-                        //println!("end pushed by cross at {}", x);
                         // pushing cross
                         x1 = x;
                     }
@@ -326,13 +322,11 @@ impl Pass for Freedom2 {
                 if x > 0 && puzzle.grid.is_filled(x - 1, y, transposed) {
                     // pulling fill
                     while x > 0 && puzzle.grid.is_filled(x - 1, y, transposed) {
-                        //println!("end pulled by fill at {}", x - 1);
                         x -= 1;
                     }
                     // TODO check for impossibility
                     x1 = x + number;
                 }
-                //println!("max end {}", x1);
                 assert!(x1 <= w);
                 assert!(x1 >= *number);
                 range_ends.push(x1);
@@ -351,11 +345,12 @@ impl Pass for Freedom2 {
                 .zip(range_starts.iter().skip(1).chain(iter::once(&w)))
             {
                 assert!(min_start + number <= *max_end);
+                /*
                 println!(
                     "{}  {}/{}/{}  {}",
                     prev_max_end, min_start, number, max_end, next_min_start,
                 );
-                println!("{}", &puzzle);
+                */
                 if *max_end == *min_start + number {
                     if *min_start > 0 {
                         puzzle.grid.cross(min_start - 1, y, transposed);
@@ -373,10 +368,12 @@ impl Pass for Freedom2 {
                 if *min_start + 2 * number > *max_end {
                     let kernel_start = max_end - number;
                     let guaranteed_end = min_start + number;
+                    /*
                     println!(
                         "{} {} {} {} {} {}",
                         min_start, turf_start, kernel_start, guaranteed_end, turf_end, max_end
                     );
+                    */
 
                     puzzle
                         .grid
@@ -399,11 +396,11 @@ impl Pass for Freedom2 {
                             .cross_horz(turf_start..x1 - number, y, transposed);
                     }
                 } else {
-                    println!("{} {} - - {} {}", min_start, turf_start, turf_end, max_end);
+                    //println!("{} {} - - {} {}", min_start, turf_start, turf_end, max_end);
                     if let Some(x0) =
                         (turf_start..turf_end).find(|x| puzzle.grid.is_filled(*x, y, transposed))
                     {
-                        println!("x0 {}", x0);
+                        //println!("x0 {}", x0);
                         puzzle.grid.cross_horz(x0 + number..turf_end, y, transposed);
                         puzzle.grid.cross_horz(
                             turf_start..(x0 + 1).max(*number) - number,
@@ -446,14 +443,11 @@ fn main() {
             .unwrap();
         match Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
-                puzzle.apply(&Freedom2);
-                println!("{}", puzzle);
-                puzzle.apply(&Freedom2);
-                //println!("{}", puzzle);
-                //puzzle.apply(&Freedom2);
-                //println!("{}", puzzle);
-                //puzzle.apply(&Freedom2);
-                //println!("{}", puzzle);
+                for _x in 0..10 {
+                    puzzle.apply(&Freedom2);
+                    println!("{}", puzzle);
+                }
+                println!("{}", puzzle.into_ast());
             }
             Err(e) => panic!("{}", e),
         }
