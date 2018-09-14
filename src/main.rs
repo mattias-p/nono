@@ -281,7 +281,7 @@ impl Pass for Freedom2 {
         for (y, clue) in puzzle.clues.horz(transposed).iter().enumerate() {
             //println!("{}", &puzzle);
             //println!("\nclue1  {}", &clue);
-            let mut min_starts = Vec::with_capacity(clue.0.len());
+            let mut range_starts = Vec::with_capacity(clue.0.len());
             let mut x0 = 0;
             for number in clue.0.iter() {
                 let mut x = x0;
@@ -304,10 +304,10 @@ impl Pass for Freedom2 {
                 }
                 assert!(x0 <= w - number);
                 //println!("min start {}", x0);
-                min_starts.push(x0);
+                range_starts.push(x0);
                 x0 += 1 + number;
             }
-            let mut max_ends = Vec::with_capacity(clue.0.len());
+            let mut range_ends = Vec::with_capacity(clue.0.len());
             let mut x1 = w + 1;
             for number in clue.0.iter().rev() {
                 //println!("rev number {}", number);
@@ -334,17 +334,17 @@ impl Pass for Freedom2 {
                 //println!("max end {}", x1);
                 assert!(x1 <= w);
                 assert!(x1 >= *number);
-                max_ends.push(x1);
+                range_ends.push(x1);
                 x1 -= number;
             }
             println!("\nclue2  {}", &clue);
             for ((((number, min_start), max_end), prev_max_end), next_min_start) in clue
                 .0
                 .iter()
-                .zip(min_starts.iter())
-                .zip(max_ends.iter().rev())
-                .zip(iter::once(&0).chain(max_ends.iter().rev()))
-                .zip(min_starts.iter().skip(1).chain(iter::once(&w)))
+                .zip(range_starts.iter())
+                .zip(range_ends.iter().rev())
+                .zip(iter::once(&0).chain(range_ends.iter().rev()))
+                .zip(range_starts.iter().skip(1).chain(iter::once(&w)))
             {
                 assert!(min_start + number <= *max_end);
                 println!(
@@ -367,21 +367,21 @@ impl Pass for Freedom2 {
                 let turf_end = *max_end.max(next_min_start);
 
                 if *min_start + 2 * number > *max_end {
-                    let guaranteed_start = max_end - number;
+                    let kernel_start = max_end - number;
                     let guaranteed_end = min_start + number;
                     println!(
                         "{} {} {} {} {} {}",
-                        min_start, turf_start, guaranteed_start, guaranteed_end, turf_end, max_end
+                        min_start, turf_start, kernel_start, guaranteed_end, turf_end, max_end
                     );
 
                     puzzle
                         .grid
-                        .fill_horz(guaranteed_start..guaranteed_end, y, transposed);
+                        .fill_horz(kernel_start..guaranteed_end, y, transposed);
 
-                    if let Some(x0) = (turf_start..guaranteed_start)
+                    if let Some(x0) = (turf_start..kernel_start)
                         .find(|x| puzzle.grid.is_filled(*x, y, transposed))
                     {
-                        puzzle.grid.fill_horz(x0..guaranteed_start, y, transposed);
+                        puzzle.grid.fill_horz(x0..kernel_start, y, transposed);
                         puzzle.grid.cross_horz(x0 + number..turf_end, y, transposed);
                     }
 
@@ -444,7 +444,7 @@ fn main() {
             Ok(mut puzzle) => {
                 puzzle.apply(&Freedom2);
                 println!("{}", puzzle);
-                //puzzle.apply(&Freedom2);
+                puzzle.apply(&Freedom2);
                 //println!("{}", puzzle);
                 //puzzle.apply(&Freedom2);
                 //println!("{}", puzzle);
