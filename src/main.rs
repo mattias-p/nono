@@ -367,17 +367,17 @@ impl Pass for Freedom2 {
 
                 if *min_start + 2 * number > *max_end {
                     let kernel_start = max_end - number;
-                    let guaranteed_end = min_start + number;
+                    let kernel_end = min_start + number;
                     /*
                     println!(
                         "{} {} {} {} {} {}",
-                        min_start, turf_start, kernel_start, guaranteed_end, turf_end, max_end
+                        min_start, turf_start, kernel_start, kernel_end, turf_end, max_end
                     );
                     */
 
                     puzzle
                         .grid
-                        .fill_horz(kernel_start..guaranteed_end, y, transposed);
+                        .fill_horz(kernel_start..kernel_end, y, transposed);
 
                     if let Some(x0) = (turf_start..kernel_start)
                         .find(|x| puzzle.grid.is_filled(*x, y, transposed))
@@ -386,11 +386,11 @@ impl Pass for Freedom2 {
                         puzzle.grid.cross_horz(x0 + number..turf_end, y, transposed);
                     }
 
-                    if let Some(x1) = (guaranteed_end..turf_end)
+                    if let Some(x1) = (kernel_end..turf_end)
                         .rev()
                         .find(|x| puzzle.grid.is_filled(*x, y, transposed))
                     {
-                        puzzle.grid.fill_horz(guaranteed_end..x1, y, transposed);
+                        puzzle.grid.fill_horz(kernel_end..x1, y, transposed);
                         puzzle
                             .grid
                             .cross_horz(turf_start..x1 - number, y, transposed);
