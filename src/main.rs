@@ -33,76 +33,91 @@ impl LinePass for OnlyCluesPass {
     }
 }
 
+trait ClueExt {
+    fn range_starts(&self, line: &Line) -> Vec<usize>;
+    fn range_ends(&self, line: &Line) -> Vec<usize>;
+}
+
+impl<'a> ClueExt for &'a [usize] {
+    fn range_starts(&self, line: &Line) -> Vec<usize> {
+        let mut range_starts = Vec::with_capacity(self.len());
+        let mut start = 0;
+        for number in self.iter() {
+            //println!("  starts start {}", start);
+            //println!("  starts number {}", number);
+            let mut focus = start;
+            while focus < (start + number).min(line.len()) {
+                if line.is_crossed(focus) {
+                    // pushing cross
+                    //println!("  starts pushed by cross at {}", focus);
+                    start = focus + 1;
+                }
+                focus += 1;
+            }
+            while focus < line.len() && line.is_filled(focus) {
+                // pulling fill
+                //println!("  starts pulled by fill at {}", focus);
+                focus += 1;
+            }
+            range_starts.push(focus - number);
+            start = focus + 1;
+        }
+        //println!("  starts {:?}", range_starts);
+        range_starts
+    }
+
+    fn range_ends(&self, line: &Line) -> Vec<usize> {
+        let mut range_ends = Vec::with_capacity(self.len());
+        let mut last: isize = line.len() as isize - 1;
+        for number in self.iter().rev() {
+            let number = *number as isize;
+            println!("  ends last {}", last);
+            println!("  ends number {}", number);
+            let mut focus: isize = last;
+            while focus >= 0 && focus + number >= last + 1 {
+                println!("  ends checking for cross at {}", focus);
+                if line.is_crossed(focus as usize) {
+                    // pushing cross
+                    println!("  ends pushed by cross at {}", focus);
+                    last = focus - 1;
+                }
+                focus -= 1;
+            }
+            println!("  ends checking for fill at {}", focus);
+            while focus >= 0 && line.is_filled(focus as usize) {
+                // pulling fill
+                println!("  ends pulled by fill at {}", focus);
+                focus -= 1;
+            }
+            println!("  {} {}", focus, number);
+            assert!(focus + number + 1 <= line.len() as isize);
+            range_ends.push((focus + 1 + number) as usize);
+            last = focus - 1;
+        }
+        println!("  ends {:?}", range_ends);
+        range_ends
+    }
+}
+
 struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {
     fn run(&self, clue: &[usize], line: &mut Line) {
-        let w = line.len();
-        //println!("CLUE  {:?}", clue);
+        println!("CLUE  {:?}", clue);
 
-        let mut range_starts = Vec::with_capacity(clue.len());
-        let mut start = 0;
-        for number in clue.iter() {
-            //println!("  starts number {}", number);
-            //println!("  starts start {}", start);
-            let mut end = start;
-            while end < (start + number).min(w) {
-                if line.is_crossed(end) {
-                    // pushing cross
-                    //println!("  starts pushed by cross at {}", end);
-                    start = end + 1;
-                }
-                end += 1;
-            }
-            if end < w && line.is_filled(end) {
-                while end < w && line.is_filled(end) {
-                    // pulling fill
-                    //println!("  starts pulled by fill at {}", end);
-                    end += 1;
-                }
-                // TODO check for impossibility
-            }
-            range_starts.push(end - number);
-            start = end + 1;
-        }
-        //println!("  starts {:?}", range_starts);
+        let range_starts = clue.range_starts(line);
+        let range_ends = clue.range_ends(line);
 
-        let mut range_ends = Vec::with_capacity(clue.len());
-        let mut x1 = w + 1;
-        for number in clue.iter().rev() {
-            x1 -= 1;
-            let mut x = x1 - 1;
-            while x > 0 && x > x1 - number {
-                if line.is_crossed(x) {
-                    // pushing cross
-                    x1 = x;
-                }
-                x -= 1;
-            }
-
-            if x > 0 && line.is_filled(x - 1) {
-                // pulling fill
-                while x > 0 && line.is_filled(x - 1) {
-                    x -= 1;
-                }
-                // TODO check for impossibility
-                x1 = x + number;
-            }
-            assert!(x1 <= w);
-            assert!(x1 >= *number);
-            range_ends.push(x1);
-            x1 -= number;
-        }
-
+        let len = line.len();
         line.cross_range(0..range_starts[0]);
-        line.cross_range(range_ends[0]..w);
+        line.cross_range(range_ends[0]..len);
 
         for ((((number, range_start), range_end), prev_range_end), next_min_start) in clue
             .iter()
             .zip(range_starts.iter())
             .zip(range_ends.iter().rev())
             .zip(iter::once(&0).chain(range_ends.iter().rev()))
-            .zip(range_starts.iter().skip(1).chain(iter::once(&w)))
+            .zip(range_starts.iter().skip(1).chain(iter::once(&line.len())))
         {
             assert!(range_start + number <= *range_end);
 
@@ -118,7 +133,7 @@ impl LinePass for ContinuousRangePass {
                     line.cross(range_start - 1);
                 }
                 line.fill_range(*range_start..*range_end);
-                if *range_end < w {
+                if *range_end < line.len() {
                     line.cross(*range_end);
                 }
                 continue;
