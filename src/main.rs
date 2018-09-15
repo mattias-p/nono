@@ -22,16 +22,22 @@ use puzzle::LinePassExt;
 struct OnlyCluesPass;
 
 impl LinePass for OnlyCluesPass {
-    fn run(&self, clue: &[usize], line: &mut Line) {
+    fn run(&self, clue: &[usize], line: &mut Line) -> bool {
+        let mut is_dirty = false;
         let sum: usize = clue.iter().sum();
         let freedom: usize = line.len() - (sum + clue.len() - 1);
         let mut x0 = 0;
         for number in clue.iter() {
             if *number > freedom {
                 line.fill_range(x0 + freedom..x0 + number);
+                if line.check_dirty() {
+                    println!("clues only");
+                    is_dirty = true;
+                }
             }
             x0 += number + 1;
         }
+        is_dirty
     }
 }
 
@@ -101,7 +107,8 @@ impl<'a> ClueExt for &'a [usize] {
 struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {
-    fn run(&self, clue: &[usize], line: &mut Line) {
+    fn run(&self, clue: &[usize], line: &mut Line) -> bool {
+        let mut is_dirty = false;
         //println!("CLUE  {:?}", clue);
 
         let range_starts = clue.range_starts(line);
@@ -113,6 +120,7 @@ impl LinePass for ContinuousRangePass {
         line.cross_range(range_ends[0]..len);
         if line.check_dirty() {
             println!("unreachable cells");
+            is_dirty = true;
         }
 
         let turf_ends = range_starts
@@ -148,6 +156,7 @@ impl LinePass for ContinuousRangePass {
                 }
                 if line.check_dirty() {
                     println!("perfect fit");
+                    is_dirty = true;
                 }
                 continue;
             }
@@ -161,6 +170,7 @@ impl LinePass for ContinuousRangePass {
                 line.fill_range(kernel_start..kernel_end);
                 if line.check_dirty() {
                     println!("kernel");
+                    is_dirty = true;
                 }
 
                 // kernel turf
@@ -174,6 +184,7 @@ impl LinePass for ContinuousRangePass {
                 }
                 if line.check_dirty() {
                     println!("kernel turf");
+                    is_dirty = true;
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
                 // drifting turf
@@ -187,9 +198,11 @@ impl LinePass for ContinuousRangePass {
                 }
                 if line.check_dirty() {
                     println!("drifting turf");
+                    is_dirty = true;
                 }
             }
         }
+        is_dirty
     }
 }
 
@@ -204,12 +217,21 @@ fn main() {
             .unwrap();
         match puzzle::Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
-                for _x in 0..20 {
-                    ContinuousRangePass.apply_horz(&mut puzzle);
+                let mut is_dirty = true;
+                let mut pass_counter = 0;
+                while is_dirty {
+                    is_dirty = false;
+                    if ContinuousRangePass.apply_horz(&mut puzzle) {
+                        is_dirty = true;
+                    }
                     //println!("\nAfter horz:\n{}", puzzle);
-                    ContinuousRangePass.apply_vert(&mut puzzle);
+                    if ContinuousRangePass.apply_vert(&mut puzzle) {
+                        is_dirty = true;
+                    }
                     //println!("\nAfter vert:\n{}", puzzle);
+                    pass_counter += 1;
                 }
+                println!("Number of passes: {}", pass_counter - 1);
                 println!("{}", &puzzle);
                 println!("{}", puzzle.into_ast());
             }
