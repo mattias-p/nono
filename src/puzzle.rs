@@ -7,6 +7,40 @@ use std::ops::Range;
 
 use parser;
 
+pub trait LinePass {
+    fn run(&self, clue: &[usize], line: &mut Line);
+}
+
+pub trait LinePassExt {
+    fn apply_horz(&self, puzzle: &mut Puzzle);
+    fn apply_vert(&self, puzzle: &mut Puzzle);
+}
+
+impl<T: LinePass> LinePassExt for T {
+    fn apply_horz(&self, puzzle: &mut Puzzle) {
+        for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
+            self.run(
+                clue.0.as_slice(),
+                &mut HorzLine {
+                    grid: &mut puzzle.grid,
+                    y,
+                },
+            );
+        }
+    }
+    fn apply_vert(&self, puzzle: &mut Puzzle) {
+        for (x, clue) in puzzle.vert_clues.0.iter().enumerate() {
+            self.run(
+                clue.0.as_slice(),
+                &mut VertLine {
+                    grid: &mut puzzle.grid,
+                    x,
+                },
+            );
+        }
+    }
+}
+
 pub trait Line {
     fn is_crossed(&self, i: usize) -> bool;
     fn is_filled(&self, i: usize) -> bool;
@@ -72,37 +106,6 @@ impl<'a> Line for VertLine<'a> {
     }
     fn len(&self) -> usize {
         self.grid.height
-    }
-}
-
-pub trait LinePass {
-    fn run(&self, clue: &[usize], line: &mut Line);
-}
-
-pub trait LinePassExt {
-    fn apply(&self, puzzle: &mut Puzzle);
-}
-
-impl<T: LinePass> LinePassExt for T {
-    fn apply(&self, puzzle: &mut Puzzle) {
-        for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
-            self.run(
-                clue.0.as_slice(),
-                &mut HorzLine {
-                    grid: &mut puzzle.grid,
-                    y,
-                },
-            );
-        }
-        for (x, clue) in puzzle.vert_clues.0.iter().enumerate() {
-            self.run(
-                clue.0.as_slice(),
-                &mut VertLine {
-                    grid: &mut puzzle.grid,
-                    x,
-                },
-            );
-        }
     }
 }
 

@@ -38,32 +38,34 @@ struct ContinuousRangePass;
 impl LinePass for ContinuousRangePass {
     fn run(&self, clue: &[usize], line: &mut Line) {
         let w = line.len();
-        //println!("{}", &puzzle);
-        //println!("CLUE  {}", line.clue);
+        //println!("CLUE  {:?}", clue);
 
         let mut range_starts = Vec::with_capacity(clue.len());
-        let mut x0 = 0;
+        let mut start = 0;
         for number in clue.iter() {
-            let mut x = x0;
-            while x < w && x < x0 + number {
-                if line.is_crossed(x) {
+            //println!("  starts number {}", number);
+            //println!("  starts start {}", start);
+            let mut end = start;
+            while end < (start + number).min(w) {
+                if line.is_crossed(end) {
                     // pushing cross
-                    x0 = x + 1;
+                    //println!("  starts pushed by cross at {}", end);
+                    start = end + 1;
                 }
-                x += 1;
+                end += 1;
             }
-            if x < w && line.is_filled(x) {
-                // pulling fill
-                while x < w && line.is_filled(x) {
-                    x += 1;
+            if end < w && line.is_filled(end) {
+                while end < w && line.is_filled(end) {
+                    // pulling fill
+                    //println!("  starts pulled by fill at {}", end);
+                    end += 1;
                 }
                 // TODO check for impossibility
-                x0 = x - number;
             }
-            assert!(x0 <= w - number);
-            range_starts.push(x0);
-            x0 += number;
+            range_starts.push(end - number);
+            start = end + 1;
         }
+        //println!("  starts {:?}", range_starts);
 
         let mut range_ends = Vec::with_capacity(clue.len());
         let mut x1 = w + 1;
@@ -170,8 +172,10 @@ fn main() {
         match puzzle::Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
                 for _x in 0..1 {
-                    ContinuousRangePass.apply(&mut puzzle);
-                    println!("{}", puzzle);
+                    ContinuousRangePass.apply_horz(&mut puzzle);
+                    println!("\nAfter horz:\n{}", puzzle);
+                    ContinuousRangePass.apply_vert(&mut puzzle);
+                    println!("\nAfter vert:\n{}", puzzle);
                 }
                 println!("{}", puzzle.into_ast());
             }
