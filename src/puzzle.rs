@@ -338,7 +338,13 @@ impl fmt::Display for Puzzle {
                 }
             }
             for x in 0..w {
-                write!(f, " {}", self.grid.get(x, y))?;
+                let ch = match self.grid.get(x, y) {
+                    Cell::Crossed => '⨉',
+                    Cell::Filled => '■',
+                    Cell::Impossible => '!',
+                    Cell::Undecided => '·',
+                };
+                write!(f, " {}", ch)?;
             }
             write!(f, "\n")?;
         }

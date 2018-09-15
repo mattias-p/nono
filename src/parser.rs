@@ -77,7 +77,7 @@ impl fmt::Display for Cell {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Cell::Filled => write!(f, "#"),
-            Cell::Crossed => write!(f, "X"),
+            Cell::Crossed => write!(f, "x"),
             Cell::Undecided => write!(f, "."),
             Cell::Impossible => write!(f, "!"),
         }
