@@ -1,7 +1,7 @@
 # nono
 Nonogram hint dispenser
 
-At this time it only implement very basic techniques and isn't very specific about its hints.
+At this time it only implements very basic techniques and isn't very specific about its hints.
 
 
 ## Getting started
