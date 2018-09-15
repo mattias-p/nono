@@ -7,3 +7,4 @@ authors = ["Mattias Päivärinta <mattias@paivarinta.se>"]
 fixedbitset = "0.1.9"
 pest = "^1.0"
 pest_derive = "^1.0"
+itertools = "0.7.8"

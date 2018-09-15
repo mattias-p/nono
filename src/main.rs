@@ -2,6 +2,8 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 extern crate fixedbitset;
+#[macro_use]
+extern crate itertools;
 
 mod parser;
 mod puzzle;
@@ -105,38 +107,46 @@ impl LinePass for ContinuousRangePass {
         let range_starts = clue.range_starts(line);
         let range_ends = clue.range_ends(line);
 
+        // unreachable cells
         let len = line.len();
         line.cross_range(0..range_starts[0]);
         line.cross_range(range_ends[0]..len);
 
-        for ((((number, range_start), range_end), prev_range_end), next_min_start) in clue
+        let turf_ends = range_starts
             .iter()
-            .zip(range_starts.iter())
+            .skip(1)
+            .map(|e| *e - 1)
+            .chain(iter::once(len + 1))
             .zip(range_ends.iter().rev())
-            .zip(iter::once(&0).chain(range_ends.iter().rev()))
-            .zip(range_starts.iter().skip(1).chain(iter::once(&line.len())))
+            .map(|(next_range_start, range_end)| (*range_end).min(next_range_start));
+        let turf_starts = iter::once(0)
+            .chain(range_ends.iter().rev().map(|e| e + 1))
+            .zip(range_starts.iter())
+            .map(|(prev_range_end, range_start)| prev_range_end.max(*range_start));
+        let range_ends = range_ends.iter().rev().map(|e| *e);
+        let range_starts = range_starts.iter().map(|e| *e);
+        let numbers = clue.iter().map(|e| *e);
+
+        for (number, range_start, range_end, turf_start, turf_end) in
+            izip!(numbers, range_starts, range_ends, turf_starts, turf_ends)
         {
-            assert!(range_start + number <= *range_end);
+            println!("number {}", number);
+            println!("range  {}..{}", range_start, range_end);
+            println!("turf   {}..{}", turf_start, turf_end);
 
-            let turf_start = *prev_range_end.max(range_start);
-            let turf_end = *range_end.min(next_min_start);
-
-            //println!("number {}", number);
-            //println!("range  {}..{}", range_start, range_end);
-            //println!("turf   {}..{}", turf_start, turf_end);
-
-            if *range_end == *range_start + number {
-                if *range_start > 0 {
+            // termination
+            if range_start + number == range_end {
+                if range_start > 0 {
                     line.cross(range_start - 1);
                 }
-                line.fill_range(*range_start..*range_end);
-                if *range_end < line.len() {
-                    line.cross(*range_end);
+                line.fill_range(range_start..range_end);
+                if range_end < line.len() {
+                    line.cross(range_end);
                 }
                 continue;
             }
 
-            if *range_start + 2 * number > *range_end {
+            if range_start + 2 * number > range_end {
                 let kernel_start = range_end - number;
                 let kernel_end = range_start + number;
 
@@ -158,13 +168,13 @@ impl LinePass for ContinuousRangePass {
                 if let Some(x0) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
                     //println!("x0 {}", x0);
                     line.cross_range(x0 + number..turf_end);
-                    line.cross_range(turf_start..(x0 + 1).max(*number) - number);
+                    line.cross_range(turf_start..(x0 + 1).max(number) - number);
 
                     if let Some(x1) = (x0..turf_end).rev().find(|x| line.is_filled(*x)) {
                         line.fill_range(x0 + 1..x1);
-                        line.cross_range(turf_start..x1.max(*number) - number);
+                        line.cross_range(turf_start..x1.max(number) - number);
                     } else {
-                        line.cross_range(turf_start..x0.max(*number) - number);
+                        line.cross_range(turf_start..x0.max(number) - number);
                     }
                 }
             }
