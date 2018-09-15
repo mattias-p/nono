@@ -102,7 +102,7 @@ struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {
     fn run(&self, clue: &[usize], line: &mut Line) {
-        println!("CLUE  {:?}", clue);
+        //println!("CLUE  {:?}", clue);
 
         let range_starts = clue.range_starts(line);
         let range_ends = clue.range_ends(line);
@@ -111,6 +111,9 @@ impl LinePass for ContinuousRangePass {
         let len = line.len();
         line.cross_range(0..range_starts[0]);
         line.cross_range(range_ends[0]..len);
+        if line.check_dirty() {
+            println!("unreachable cells");
+        }
 
         let turf_ends = range_starts
             .iter()
@@ -130,9 +133,9 @@ impl LinePass for ContinuousRangePass {
         for (number, range_start, range_end, turf_start, turf_end) in
             izip!(numbers, range_starts, range_ends, turf_starts, turf_ends)
         {
-            println!("number {}", number);
-            println!("range  {}..{}", range_start, range_end);
-            println!("turf   {}..{}", turf_start, turf_end);
+            //println!("number {}", number);
+            //println!("range  {}..{}", range_start, range_end);
+            //println!("turf   {}..{}", turf_start, turf_end);
 
             if range_start + number == range_end {
                 // perfect fit
@@ -142,6 +145,9 @@ impl LinePass for ContinuousRangePass {
                 line.fill_range(range_start..range_end);
                 if range_end < line.len() {
                     line.cross(range_end);
+                }
+                if line.check_dirty() {
+                    println!("perfect fit");
                 }
                 continue;
             }
@@ -153,17 +159,21 @@ impl LinePass for ContinuousRangePass {
 
                 // kernel
                 line.fill_range(kernel_start..kernel_end);
+                if line.check_dirty() {
+                    println!("kernel");
+                }
 
+                // remote turf
                 if let Some(found_start) = (turf_start..kernel_start).find(|x| line.is_filled(*x)) {
-                    // near turf
                     line.fill_range(found_start..kernel_start);
                     line.cross_range(found_start + number..turf_end);
                 }
-
                 if let Some(found_end) = (kernel_end..turf_end).rev().find(|x| line.is_filled(*x)) {
-                    // far turf
                     line.fill_range(kernel_end..found_end);
                     line.cross_range(turf_start..found_end - number);
+                }
+                if line.check_dirty() {
+                    println!("remote turf");
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
                 if let Some(found_end) = (found_start..turf_end).rev().find(|x| line.is_filled(*x))
@@ -176,6 +186,9 @@ impl LinePass for ContinuousRangePass {
                     // single turf
                     line.cross_range(turf_start..found_start.saturating_sub(number));
                     line.cross_range(found_start + number..turf_end);
+                }
+                if line.check_dirty() {
+                    println!("vagrant turf");
                 }
             }
         }
