@@ -163,7 +163,7 @@ impl LinePass for ContinuousRangePass {
                     println!("kernel");
                 }
 
-                // remote turf
+                // kernel turf
                 if let Some(found_start) = (turf_start..kernel_start).find(|x| line.is_filled(*x)) {
                     line.fill_range(found_start..kernel_start);
                     line.cross_range(found_start + number..turf_end);
@@ -173,22 +173,20 @@ impl LinePass for ContinuousRangePass {
                     line.cross_range(turf_start..found_end - number);
                 }
                 if line.check_dirty() {
-                    println!("remote turf");
+                    println!("kernel turf");
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
+                // drifting turf
+                line.cross_range(turf_start..found_start.saturating_sub(number));
                 if let Some(found_end) = (found_start..turf_end).rev().find(|x| line.is_filled(*x))
                 {
-                    // double turf
-                    line.cross_range(turf_start..found_start.saturating_sub(number));
                     line.fill_range(found_start + 1..found_end);
                     line.cross_range(found_end + number..turf_end);
                 } else {
-                    // single turf
-                    line.cross_range(turf_start..found_start.saturating_sub(number));
                     line.cross_range(found_start + number..turf_end);
                 }
                 if line.check_dirty() {
-                    println!("vagrant turf");
+                    println!("drifting turf");
                 }
             }
         }
@@ -206,7 +204,7 @@ fn main() {
             .unwrap();
         match puzzle::Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
-                for _x in 0..10 {
+                for _x in 0..20 {
                     ContinuousRangePass.apply_horz(&mut puzzle);
                     //println!("\nAfter horz:\n{}", puzzle);
                     ContinuousRangePass.apply_vert(&mut puzzle);
