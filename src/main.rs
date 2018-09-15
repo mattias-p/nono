@@ -102,7 +102,7 @@ struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {
     fn run(&self, clue: &[usize], line: &mut Line) {
-        println!("CLUE  {:?}", clue);
+        //println!("CLUE  {:?}", clue);
 
         let range_starts = clue.range_starts(line);
         let range_ends = clue.range_ends(line);
@@ -130,9 +130,9 @@ impl LinePass for ContinuousRangePass {
         for (number, range_start, range_end, turf_start, turf_end) in
             izip!(numbers, range_starts, range_ends, turf_starts, turf_ends)
         {
-            println!("number {}", number);
-            println!("range  {}..{}", range_start, range_end);
-            println!("turf   {}..{}", turf_start, turf_end);
+            //println!("number {}", number);
+            //println!("range  {}..{}", range_start, range_end);
+            //println!("turf   {}..{}", turf_start, turf_end);
 
             // termination
             if range_start + number == range_end {
@@ -164,7 +164,7 @@ impl LinePass for ContinuousRangePass {
                     line.cross_range(turf_start..x1 - number);
                 }
             } else {
-                //println!("{} {} - - {} {}", range_start, turf_start, turf_end, range_end);
+                //println!( "{} {} - - {} {}", range_start, turf_start, turf_end, range_end);
                 if let Some(x0) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
                     //println!("x0 {}", x0);
                     line.cross_range(x0 + number..turf_end);
@@ -193,12 +193,13 @@ fn main() {
             .unwrap();
         match puzzle::Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
-                for _x in 0..1 {
+                for _x in 0..3 {
                     ContinuousRangePass.apply_horz(&mut puzzle);
-                    println!("\nAfter horz:\n{}", puzzle);
+                    //println!("\nAfter horz:\n{}", puzzle);
                     ContinuousRangePass.apply_vert(&mut puzzle);
-                    println!("\nAfter vert:\n{}", puzzle);
+                    //println!("\nAfter vert:\n{}", puzzle);
                 }
+                println!("{}", &puzzle);
                 println!("{}", puzzle.into_ast());
             }
             Err(e) => panic!("{}", e),

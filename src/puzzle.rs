@@ -26,6 +26,7 @@ impl<T: LinePass> LinePassExt for T {
                     y,
                 },
             );
+            //println!("\nAfter horz line:\n{}", puzzle);
         }
     }
     fn apply_vert(&self, puzzle: &mut Puzzle) {
@@ -37,6 +38,7 @@ impl<T: LinePass> LinePassExt for T {
                     x,
                 },
             );
+            //println!("\nAfter vert line:\n{}", puzzle);
         }
     }
 }
@@ -64,10 +66,10 @@ impl<'a> Line for HorzLine<'a> {
         self.grid.is_filled(x, self.y)
     }
     fn cross(&mut self, x: usize) {
-        self.grid.fill(x, self.y);
+        self.grid.cross(x, self.y);
     }
     fn fill(&mut self, x: usize) {
-        self.grid.cross(x, self.y);
+        self.grid.fill(x, self.y);
     }
     fn cross_range(&mut self, xs: Range<usize>) {
         self.grid.cross_horz(xs, self.y);
@@ -93,10 +95,10 @@ impl<'a> Line for VertLine<'a> {
         self.grid.is_filled(self.x, y)
     }
     fn cross(&mut self, y: usize) {
-        self.grid.fill(self.x, y);
+        self.grid.cross(self.x, y);
     }
     fn fill(&mut self, y: usize) {
-        self.grid.cross(self.x, y);
+        self.grid.fill(self.x, y);
     }
     fn cross_range(&mut self, ys: Range<usize>) {
         self.grid.cross_vert(self.x, ys);
@@ -144,7 +146,7 @@ impl Grid {
     fn fill(&mut self, x: usize, y: usize) {
         let i = self.index(x, y);
         if !self.filled.contains(i) {
-            //println!("fill {} {} {}", x, y, transposed);
+            //println!("fill {} {}, {}", x, y, i);
         }
         self.filled.put(i);
     }
