@@ -18,11 +18,6 @@ use std::io::BufRead;
 use std::iter;
 use std::ops::Range;
 
-struct Clues {
-    vert: ClueList,
-    horz: ClueList,
-}
-
 struct Grid {
     width: usize,
     height: usize,
@@ -90,14 +85,14 @@ impl Grid {
 }
 
 struct Puzzle {
-    clues: Clues,
+    vert_clues: ClueList,
+    horz_clues: ClueList,
     grid: Grid,
 }
 
 impl Puzzle {
     fn max_horz_clue_len(&self) -> usize {
-        self.clues
-            .horz
+        self.horz_clues
             .0
             .iter()
             .map(|clue| clue.0.len())
@@ -105,8 +100,7 @@ impl Puzzle {
             .unwrap()
     }
     fn max_vert_clue_len(&self) -> usize {
-        self.clues
-            .vert
+        self.vert_clues
             .0
             .iter()
             .map(|clue| clue.0.len())
@@ -114,7 +108,7 @@ impl Puzzle {
             .unwrap()
     }
     fn line_pass(&mut self, pass: &impl LinePass) {
-        for (y, clue) in self.clues.horz.0.iter().enumerate() {
+        for (y, clue) in self.horz_clues.0.iter().enumerate() {
             pass.run(
                 clue.0.as_slice(),
                 &mut HorzLine {
@@ -123,7 +117,7 @@ impl Puzzle {
                 },
             );
         }
-        for (x, clue) in self.clues.vert.0.iter().enumerate() {
+        for (x, clue) in self.vert_clues.0.iter().enumerate() {
             pass.run(
                 clue.0.as_slice(),
                 &mut VertLine {
@@ -172,10 +166,8 @@ impl Puzzle {
                 }
             }
             Ok(Puzzle {
-                clues: Clues {
-                    vert: ast.vert_clues,
-                    horz: ast.horz_clues,
-                },
+                vert_clues: ast.vert_clues,
+                horz_clues: ast.horz_clues,
                 grid: Grid {
                     width: w,
                     height: h,
@@ -187,10 +179,8 @@ impl Puzzle {
             let filled = FixedBitSet::with_capacity(w * h);
             let crossed = FixedBitSet::with_capacity(w * h);
             Ok(Puzzle {
-                clues: Clues {
-                    vert: ast.vert_clues,
-                    horz: ast.horz_clues,
-                },
+                vert_clues: ast.vert_clues,
+                horz_clues: ast.horz_clues,
                 grid: Grid {
                     width: w,
                     height: h,
@@ -202,22 +192,22 @@ impl Puzzle {
     }
     fn into_ast_without_grid(self) -> parser::Puzzle {
         parser::Puzzle {
-            horz_clues: self.clues.horz,
-            vert_clues: self.clues.vert,
+            horz_clues: self.horz_clues,
+            vert_clues: self.vert_clues,
             grid: None,
         }
     }
     fn into_ast(self) -> parser::Puzzle {
-        let h = self.clues.horz.0.len();
-        let w = self.clues.vert.0.len();
+        let h = self.horz_clues.0.len();
+        let w = self.vert_clues.0.len();
         let mut grid_lines = Vec::with_capacity(w);
         for y in 0..h {
             let cells = (0..w).map(|x| self.grid.get(x, y)).collect();
             grid_lines.push(GridLine(cells));
         }
         parser::Puzzle {
-            horz_clues: self.clues.horz,
-            vert_clues: self.clues.vert,
+            horz_clues: self.horz_clues,
+            vert_clues: self.vert_clues,
             grid: Some(parser::Grid(grid_lines)),
         }
     }
@@ -225,12 +215,12 @@ impl Puzzle {
 
 impl fmt::Display for Puzzle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let w = self.clues.vert.0.len();
+        let w = self.vert_clues.0.len();
         let max_vert_clue_len = self.max_vert_clue_len();
         let max_horz_clue_len = self.max_horz_clue_len();
         for i in 0..max_vert_clue_len {
             write!(f, "{: >width$}", "", width = 3 * max_horz_clue_len)?;
-            for clue in &self.clues.vert.0 {
+            for clue in &self.vert_clues.0 {
                 if clue.0.len() > max_vert_clue_len - i - 1 {
                     write!(f, "{: >2}", clue.0[clue.0.len() - (max_vert_clue_len - i)])?;
                 } else {
@@ -239,7 +229,7 @@ impl fmt::Display for Puzzle {
             }
             write!(f, "\n")?;
         }
-        for (y, clue) in self.clues.horz.0.iter().enumerate() {
+        for (y, clue) in self.horz_clues.0.iter().enumerate() {
             for i in 0..max_horz_clue_len {
                 if clue.0.len() > max_horz_clue_len - i - 1 {
                     write!(f, " {: >2}", clue.0[clue.0.len() - (max_horz_clue_len - i)])?;
