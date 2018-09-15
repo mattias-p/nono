@@ -71,30 +71,27 @@ impl<'a> ClueExt for &'a [usize] {
         let mut last: isize = line.len() as isize - 1;
         for number in self.iter().rev() {
             let number = *number as isize;
-            println!("  ends last {}", last);
-            println!("  ends number {}", number);
+            //println!("  ends last {}", last);
+            //println!("  ends number {}", number);
             let mut focus: isize = last;
             while focus >= 0 && focus + number >= last + 1 {
-                println!("  ends checking for cross at {}", focus);
                 if line.is_crossed(focus as usize) {
                     // pushing cross
-                    println!("  ends pushed by cross at {}", focus);
+                    //println!("  ends pushed by cross at {}", focus);
                     last = focus - 1;
                 }
                 focus -= 1;
             }
-            println!("  ends checking for fill at {}", focus);
             while focus >= 0 && line.is_filled(focus as usize) {
                 // pulling fill
-                println!("  ends pulled by fill at {}", focus);
+                //println!("  ends pulled by fill at {}", focus);
                 focus -= 1;
             }
-            println!("  {} {}", focus, number);
             assert!(focus + number + 1 <= line.len() as isize);
             range_ends.push((focus + 1 + number) as usize);
             last = focus - 1;
         }
-        println!("  ends {:?}", range_ends);
+        //println!("  ends {:?}", range_ends);
         range_ends
     }
 }
