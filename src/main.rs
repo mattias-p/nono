@@ -303,7 +303,7 @@ impl Pass for Freedom2 {
                 }
                 assert!(x0 <= w - number);
                 range_starts.push(x0);
-                x0 += 1 + number;
+                x0 += number;
             }
 
             let mut range_ends = Vec::with_capacity(clue.0.len());
@@ -336,7 +336,7 @@ impl Pass for Freedom2 {
             puzzle.grid.cross_horz(0..range_starts[0], y, transposed);
             puzzle.grid.cross_horz(range_ends[0]..w, y, transposed);
 
-            for ((((number, min_start), max_end), prev_max_end), next_min_start) in clue
+            for ((((number, range_start), range_end), prev_range_end), next_min_start) in clue
                 .0
                 .iter()
                 .zip(range_starts.iter())
@@ -344,36 +344,33 @@ impl Pass for Freedom2 {
                 .zip(iter::once(&0).chain(range_ends.iter().rev()))
                 .zip(range_starts.iter().skip(1).chain(iter::once(&w)))
             {
-                assert!(min_start + number <= *max_end);
-                /*
-                println!(
-                    "{}  {}/{}/{}  {}",
-                    prev_max_end, min_start, number, max_end, next_min_start,
-                );
-                */
-                if *max_end == *min_start + number {
-                    if *min_start > 0 {
-                        puzzle.grid.cross(min_start - 1, y, transposed);
+                assert!(range_start + number <= *range_end);
+
+                let turf_start = *prev_range_end.max(range_start);
+                let turf_end = *range_end.min(next_min_start);
+
+                //println!("number {}", number);
+                //println!("range  {}..{}", range_start, range_end);
+                //println!("turf   {}..{}", turf_start, turf_end);
+
+                if *range_end == *range_start + number {
+                    if *range_start > 0 {
+                        puzzle.grid.cross(range_start - 1, y, transposed);
                     }
-                    puzzle.grid.fill_horz(*min_start..*max_end, y, transposed);
-                    if *max_end < w {
-                        puzzle.grid.cross(*max_end, y, transposed);
+                    puzzle
+                        .grid
+                        .fill_horz(*range_start..*range_end, y, transposed);
+                    if *range_end < w {
+                        puzzle.grid.cross(*range_end, y, transposed);
                     }
                     continue;
                 }
 
-                let turf_start = *prev_max_end.max(min_start);
-                let turf_end = *max_end.min(next_min_start);
+                if *range_start + 2 * number > *range_end {
+                    let kernel_start = range_end - number;
+                    let kernel_end = range_start + number;
 
-                if *min_start + 2 * number > *max_end {
-                    let kernel_start = max_end - number;
-                    let kernel_end = min_start + number;
-                    /*
-                    println!(
-                        "{} {} {} {} {} {}",
-                        min_start, turf_start, kernel_start, kernel_end, turf_end, max_end
-                    );
-                    */
+                    //println!("kernel {}..{}", kernel_start, kernel_end);
 
                     puzzle
                         .grid
@@ -396,7 +393,7 @@ impl Pass for Freedom2 {
                             .cross_horz(turf_start..x1 - number, y, transposed);
                     }
                 } else {
-                    //println!("{} {} - - {} {}", min_start, turf_start, turf_end, max_end);
+                    //println!("{} {} - - {} {}", range_start, turf_start, turf_end, range_end);
                     if let Some(x0) =
                         (turf_start..turf_end).find(|x| puzzle.grid.is_filled(*x, y, transposed))
                     {
@@ -443,7 +440,7 @@ fn main() {
             .unwrap();
         match Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
-                for _x in 0..10 {
+                for _x in 0..15 {
                     puzzle.apply(&Freedom2);
                     println!("{}", puzzle);
                 }
