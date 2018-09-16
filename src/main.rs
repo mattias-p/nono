@@ -199,7 +199,9 @@ impl LinePass for ContinuousRangePass {
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
                 let reachable_end = found_start + number;
-                if let Some(found_end) = (found_start..turf_end).rev().find(|x| line.is_filled(*x))
+                if let Some(found_end) = (found_start + 1..turf_end)
+                    .rev()
+                    .find(|x| line.is_filled(*x))
                 {
                     let turf_pair = LineHint::TurfPair {
                         turf_start,
