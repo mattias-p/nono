@@ -3,12 +3,12 @@ use puzzle::LineHint;
 use puzzle::LinePass;
 
 #[derive(Debug)]
-struct CrowdedClueHint {
+struct CrowdedClue {
     kernel_start: usize,
     kernel_end: usize,
 }
 
-impl LineHint for CrowdedClueHint {
+impl LineHint for CrowdedClue {
     fn check(&self, line: &Line) -> bool {
         line.range_contains_unfilled(self.kernel_start..self.kernel_end)
     }
@@ -27,7 +27,7 @@ impl LinePass for CrowdedCluePass {
         let mut x0 = 0;
         for number in clue.iter() {
             if *number > freedom {
-                let hint = Box::new(CrowdedClueHint {
+                let hint = Box::new(CrowdedClue {
                     kernel_start: x0 + freedom,
                     kernel_end: x0 + number,
                 });
