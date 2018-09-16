@@ -19,6 +19,36 @@ use puzzle::Line;
 use puzzle::LinePass;
 use puzzle::LinePassExt;
 
+#[derive(Debug)]
+enum LineHint {
+    CrowdedClue {
+        kernel_start: usize,
+        kernel_end: usize,
+    },
+    Unreachable {
+        reachable_start: usize,
+        reachable_end: usize,
+    },
+    Kernel {
+        kernel_start: usize,
+        kernel_end: usize,
+    },
+    Termination {
+        range_start: usize,
+        range_end: usize,
+    },
+    KernelTurf {
+        kernel_start: usize,
+        kernel_end: usize,
+        turf_start: usize,
+        turf_end: usize,
+    },
+    Turf {
+        turf_start: usize,
+        turf_end: usize,
+    },
+}
+
 struct OnlyCluesPass;
 
 impl LinePass for OnlyCluesPass {
@@ -29,9 +59,17 @@ impl LinePass for OnlyCluesPass {
         let mut x0 = 0;
         for number in clue.iter() {
             if *number > freedom {
-                line.fill_range(x0 + freedom..x0 + number);
+                let kernel_start = x0 + freedom;
+                let kernel_end = x0 + number;
+                line.fill_range(kernel_start..kernel_end);
                 if line.check_dirty() {
-                    println!("clues only");
+                    println!(
+                        "{:?}",
+                        LineHint::CrowdedClue {
+                            kernel_start,
+                            kernel_end
+                        }
+                    );
                     is_dirty = true;
                 }
             }
@@ -116,10 +154,18 @@ impl LinePass for ContinuousRangePass {
 
         // unreachable cells
         let len = line.len();
-        line.cross_range(0..range_starts[0]);
-        line.cross_range(range_ends[0]..len);
+        let reachable_start = range_starts[0];
+        let reachable_end = range_ends[0];
+        line.cross_range(0..reachable_start);
+        line.cross_range(reachable_end..len);
         if line.check_dirty() {
-            println!("unreachable cells");
+            println!(
+                "{:?}",
+                LineHint::Unreachable {
+                    reachable_start,
+                    reachable_end
+                }
+            );
             is_dirty = true;
         }
 
@@ -145,22 +191,6 @@ impl LinePass for ContinuousRangePass {
             //println!("range  {}..{}", range_start, range_end);
             //println!("turf   {}..{}", turf_start, turf_end);
 
-            if range_start + number == range_end {
-                // perfect fit
-                if range_start > 0 {
-                    line.cross(range_start - 1);
-                }
-                line.fill_range(range_start..range_end);
-                if range_end < line.len() {
-                    line.cross(range_end);
-                }
-                if line.check_dirty() {
-                    println!("perfect fit");
-                    is_dirty = true;
-                }
-                continue;
-            }
-
             if range_start + 2 * number > range_end {
                 let kernel_start = range_end - number;
                 let kernel_end = range_start + number;
@@ -169,8 +199,35 @@ impl LinePass for ContinuousRangePass {
                 // kernel
                 line.fill_range(kernel_start..kernel_end);
                 if line.check_dirty() {
-                    println!("kernel");
+                    println!(
+                        "{:?}",
+                        LineHint::Kernel {
+                            kernel_start,
+                            kernel_end,
+                        }
+                    );
                     is_dirty = true;
+                }
+
+                if kernel_start == range_start && kernel_end == range_end {
+                    // perfect fit
+                    if range_start > 0 {
+                        line.cross(range_start - 1);
+                    }
+                    if range_end < line.len() {
+                        line.cross(range_end);
+                    }
+                    if line.check_dirty() {
+                        println!(
+                            "{:?}",
+                            LineHint::Termination {
+                                range_start,
+                                range_end,
+                            }
+                        );
+                        is_dirty = true;
+                    }
+                    continue;
                 }
 
                 // kernel turf
@@ -183,7 +240,15 @@ impl LinePass for ContinuousRangePass {
                     line.cross_range(turf_start..found_end - number);
                 }
                 if line.check_dirty() {
-                    println!("kernel turf");
+                    println!(
+                        "{:?}",
+                        LineHint::KernelTurf {
+                            kernel_start,
+                            kernel_end,
+                            turf_start,
+                            turf_end,
+                        }
+                    );
                     is_dirty = true;
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
@@ -197,7 +262,13 @@ impl LinePass for ContinuousRangePass {
                     line.cross_range(found_start + number..turf_end);
                 }
                 if line.check_dirty() {
-                    println!("drifting turf");
+                    println!(
+                        "{:?}",
+                        LineHint::Turf {
+                            turf_start,
+                            turf_end,
+                        }
+                    );
                     is_dirty = true;
                 }
             }
