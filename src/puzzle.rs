@@ -53,6 +53,149 @@ pub enum LineHint {
     },
 }
 
+impl LineHint {
+    pub fn check(&self, line: &Line) -> bool {
+        match self {
+            &LineHint::CrowdedClue {
+                kernel_start,
+                kernel_end,
+            } => line.range_contains_unfilled(kernel_start..kernel_end),
+            &LineHint::Unreachable {
+                reachable_start,
+                reachable_end,
+            } => {
+                let len = line.len();
+                line.range_contains_uncrossed(0..reachable_start)
+                    || line.range_contains_uncrossed(reachable_end..len)
+            }
+            &LineHint::Kernel {
+                kernel_start,
+                kernel_end,
+            } => line.range_contains_unfilled(kernel_start..kernel_end),
+            &LineHint::Termination {
+                range_start,
+                range_end,
+            } => {
+                (range_start > 0 && !line.is_crossed(range_start - 1))
+                    || (range_end < line.len() && !line.is_crossed(range_end))
+            }
+            &LineHint::TurfNearSingleton {
+                found_start,
+                kernel_start,
+                reachable_end,
+                turf_end,
+            } => {
+                line.range_contains_unfilled(found_start..kernel_start)
+                    || line.range_contains_uncrossed(reachable_end..turf_end)
+            }
+            &LineHint::TurfFarSingleton {
+                turf_start,
+                reachable_start,
+                kernel_end,
+                found_end,
+            } => {
+                line.range_contains_uncrossed(turf_start..reachable_start)
+                    || line.range_contains_unfilled(kernel_end..found_end)
+            }
+            &LineHint::TurfPair {
+                turf_start,
+                reachable_start,
+                found_start,
+                found_end,
+                reachable_end,
+                turf_end,
+            } => {
+                line.range_contains_uncrossed(turf_start..reachable_start)
+                    || line.range_contains_unfilled(found_start + 1..found_end - 1)
+                    || line.range_contains_uncrossed(reachable_end..turf_end)
+            }
+            &LineHint::TurfSingleton {
+                turf_start,
+                reachable_start,
+                reachable_end,
+                turf_end,
+            } => {
+                line.range_contains_uncrossed(turf_start..reachable_start)
+                    || line.range_contains_uncrossed(reachable_end..turf_end)
+            }
+        }
+    }
+    pub fn apply(&self, line: &mut Line) {
+        match self {
+            &LineHint::CrowdedClue {
+                kernel_start,
+                kernel_end,
+            } => {
+                line.fill_range(kernel_start..kernel_end);
+            }
+            &LineHint::Unreachable {
+                reachable_start,
+                reachable_end,
+            } => {
+                let len = line.len();
+                line.cross_range(0..reachable_start);
+                line.cross_range(reachable_end..len);
+            }
+            &LineHint::Kernel {
+                kernel_start,
+                kernel_end,
+            } => {
+                line.fill_range(kernel_start..kernel_end);
+            }
+            &LineHint::Termination {
+                range_start,
+                range_end,
+            } => {
+                if range_start > 0 {
+                    line.cross(range_start - 1);
+                }
+                if range_end < line.len() {
+                    line.cross(range_end);
+                }
+            }
+            &LineHint::TurfNearSingleton {
+                found_start,
+                kernel_start,
+                reachable_end,
+                turf_end,
+            } => {
+                line.fill_range(found_start..kernel_start);
+                line.cross_range(reachable_end..turf_end);
+            }
+            &LineHint::TurfFarSingleton {
+                turf_start,
+                reachable_start,
+                kernel_end,
+                found_end,
+            } => {
+                line.cross_range(turf_start..reachable_start);
+                line.fill_range(kernel_end..found_end);
+            }
+            &LineHint::TurfPair {
+                turf_start,
+                reachable_start,
+                found_start,
+                found_end,
+                reachable_end,
+                turf_end,
+            } => {
+                line.cross_range(turf_start..reachable_start);
+                line.fill_range(found_start + 1..found_end - 1);
+                line.cross_range(reachable_end..turf_end);
+            }
+            &LineHint::TurfSingleton {
+                turf_start,
+                reachable_start,
+                reachable_end,
+                turf_end,
+            } => {
+                line.cross_range(turf_start..reachable_start);
+                line.cross_range(reachable_end..turf_end);
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 enum Orientation {
     Horz,
@@ -67,7 +210,7 @@ pub struct Hint {
 }
 
 pub trait LinePass {
-    fn run(&self, clue: &[usize], line: &mut Line) -> Vec<LineHint>;
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<LineHint>;
 }
 
 pub trait LinePassExt {
@@ -79,19 +222,19 @@ impl<T: LinePass> LinePassExt for T {
     fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint> {
         let mut hints = vec![];
         for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
-            let line_hints = self.run(
-                clue.0.as_slice(),
-                &mut HorzLine {
-                    grid: &mut puzzle.grid,
-                    y,
-                    is_dirty: false,
-                },
-            );
-            hints.extend(line_hints.into_iter().map(|line_hint| Hint {
-                orientation: Orientation::Horz,
-                line: y,
-                line_hint,
-            }));
+            let mut line = HorzLine {
+                grid: &mut puzzle.grid,
+                y,
+                is_dirty: false,
+            };
+            for line_hint in self.run(clue.0.as_slice(), &line) {
+                line_hint.apply(&mut line);
+                hints.push(Hint {
+                    orientation: Orientation::Horz,
+                    line: y,
+                    line_hint,
+                });
+            }
             //println!("\nAfter horz line:\n{}", puzzle);
         }
         hints
@@ -99,19 +242,19 @@ impl<T: LinePass> LinePassExt for T {
     fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint> {
         let mut hints = vec![];
         for (x, clue) in puzzle.vert_clues.0.iter().enumerate() {
-            let line_hints = self.run(
-                clue.0.as_slice(),
-                &mut VertLine {
-                    grid: &mut puzzle.grid,
-                    x,
-                    is_dirty: false,
-                },
-            );
-            hints.extend(line_hints.into_iter().map(|line_hint| Hint {
-                orientation: Orientation::Vert,
-                line: x,
-                line_hint,
-            }));
+            let mut line = VertLine {
+                grid: &mut puzzle.grid,
+                x,
+                is_dirty: false,
+            };
+            for line_hint in self.run(clue.0.as_slice(), &line) {
+                line_hint.apply(&mut line);
+                hints.push(Hint {
+                    orientation: Orientation::Vert,
+                    line: x,
+                    line_hint,
+                });
+            }
             //println!("\nAfter vert line:\n{}", puzzle);
         }
         hints
@@ -127,6 +270,8 @@ pub trait Line {
     fn fill_range(&mut self, r: Range<usize>);
     fn len(&self) -> usize;
     fn check_dirty(&mut self) -> bool;
+    fn range_contains_unfilled(&self, r: Range<usize>) -> bool;
+    fn range_contains_uncrossed(&self, r: Range<usize>) -> bool;
 }
 
 struct HorzLine<'a> {
@@ -173,6 +318,22 @@ impl<'a> Line for HorzLine<'a> {
             false
         }
     }
+    fn range_contains_unfilled(&self, xs: Range<usize>) -> bool {
+        for x in xs {
+            if !self.grid.is_filled(x, self.y) {
+                return true;
+            }
+        }
+        false
+    }
+    fn range_contains_uncrossed(&self, xs: Range<usize>) -> bool {
+        for x in xs {
+            if !self.grid.is_crossed(x, self.y) {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 struct VertLine<'a> {
@@ -218,6 +379,22 @@ impl<'a> Line for VertLine<'a> {
         } else {
             false
         }
+    }
+    fn range_contains_unfilled(&self, ys: Range<usize>) -> bool {
+        for y in ys {
+            if !self.grid.is_filled(self.x, y) {
+                return true;
+            }
+        }
+        false
+    }
+    fn range_contains_uncrossed(&self, ys: Range<usize>) -> bool {
+        for y in ys {
+            if !self.grid.is_crossed(self.x, y) {
+                return true;
+            }
+        }
+        false
     }
 }
 

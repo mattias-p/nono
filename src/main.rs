@@ -23,21 +23,19 @@ use puzzle::LinePassExt;
 struct CrowdedCluePass;
 
 impl LinePass for CrowdedCluePass {
-    fn run(&self, clue: &[usize], line: &mut Line) -> Vec<LineHint> {
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<LineHint> {
         let mut hints = vec![];
         let sum: usize = clue.iter().sum();
         let freedom: usize = line.len() - (sum + clue.len() - 1);
         let mut x0 = 0;
         for number in clue.iter() {
             if *number > freedom {
-                let kernel_start = x0 + freedom;
-                let kernel_end = x0 + number;
-                line.fill_range(kernel_start..kernel_end);
-                if line.check_dirty() {
-                    hints.push(LineHint::CrowdedClue {
-                        kernel_start,
-                        kernel_end,
-                    });
+                let hint = LineHint::CrowdedClue {
+                    kernel_start: x0 + freedom,
+                    kernel_end: x0 + number,
+                };
+                if hint.check(line) {
+                    hints.push(hint);
                 }
             }
             x0 += number + 1;
@@ -112,7 +110,7 @@ impl<'a> ClueExt for &'a [usize] {
 struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {
-    fn run(&self, clue: &[usize], line: &mut Line) -> Vec<LineHint> {
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<LineHint> {
         let mut hints = vec![];
         //println!("CLUE  {:?}", clue);
 
@@ -120,18 +118,15 @@ impl LinePass for ContinuousRangePass {
         let range_ends = clue.range_ends(line);
 
         // unreachable cells
-        let len = line.len();
-        let reachable_start = range_starts[0];
-        let reachable_end = range_ends[0];
-        line.cross_range(0..reachable_start);
-        line.cross_range(reachable_end..len);
-        if line.check_dirty() {
-            hints.push(LineHint::Unreachable {
-                reachable_start,
-                reachable_end,
-            });
+        let unreachable = LineHint::Unreachable {
+            reachable_start: range_starts[0],
+            reachable_end: range_ends[0],
+        };
+        if unreachable.check(line) {
+            hints.push(unreachable);
         }
 
+        let len = line.len();
         let turf_ends = range_starts
             .iter()
             .skip(1)
@@ -160,87 +155,72 @@ impl LinePass for ContinuousRangePass {
                 //println!("kernel {}..{}", kernel_start, kernel_end);
 
                 // kernel
-                line.fill_range(kernel_start..kernel_end);
-                if line.check_dirty() {
-                    hints.push(LineHint::Kernel {
-                        kernel_start,
-                        kernel_end,
-                    });
+                let kernel = LineHint::Kernel {
+                    kernel_start,
+                    kernel_end,
+                };
+                if kernel.check(line) {
+                    hints.push(kernel);
                 }
 
                 if kernel_start == range_start && kernel_end == range_end {
-                    // perfect fit
-                    if range_start > 0 {
-                        line.cross(range_start - 1);
-                    }
-                    if range_end < line.len() {
-                        line.cross(range_end);
-                    }
-                    if line.check_dirty() {
-                        hints.push(LineHint::Termination {
-                            range_start,
-                            range_end,
-                        });
+                    let termination = LineHint::Termination {
+                        range_start,
+                        range_end,
+                    };
+                    if termination.check(line) {
+                        hints.push(termination);
                     }
                     continue;
                 }
 
                 // kernel turf
                 if let Some(found_start) = (turf_start..kernel_start).find(|x| line.is_filled(*x)) {
-                    let reachable_end = found_start + number;
-                    line.fill_range(found_start..kernel_start);
-                    line.cross_range(reachable_end..turf_end);
-                    if line.check_dirty() {
-                        hints.push(LineHint::TurfNearSingleton {
-                            found_start,
-                            kernel_start,
-                            reachable_end,
-                            turf_end,
-                        });
+                    let turf_near_singleton = LineHint::TurfNearSingleton {
+                        found_start,
+                        kernel_start,
+                        reachable_end: found_start + number,
+                        turf_end,
+                    };
+                    if turf_near_singleton.check(line) {
+                        hints.push(turf_near_singleton);
                     }
                 }
                 if let Some(found_end) = (kernel_end..turf_end).rev().find(|x| line.is_filled(*x)) {
-                    let reachable_start = found_end - number;
-                    line.cross_range(turf_start..reachable_start);
-                    line.fill_range(kernel_end..found_end);
-                    if line.check_dirty() {
-                        hints.push(LineHint::TurfFarSingleton {
-                            turf_start,
-                            reachable_start,
-                            kernel_end,
-                            found_end,
-                        });
+                    let turf_far_singleton = LineHint::TurfFarSingleton {
+                        turf_start,
+                        reachable_start: found_end - number,
+                        kernel_end,
+                        found_end,
+                    };
+                    if turf_far_singleton.check(line) {
+                        hints.push(turf_far_singleton);
                     }
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
                 let reachable_end = found_start + number;
                 if let Some(found_end) = (found_start..turf_end).rev().find(|x| line.is_filled(*x))
                 {
-                    let reachable_start = found_end.saturating_sub(number);
-                    line.cross_range(turf_start..reachable_start);
-                    line.fill_range(found_start + 1..found_end - 1);
-                    line.cross_range(reachable_end..turf_end);
-                    if line.check_dirty() {
-                        hints.push(LineHint::TurfPair {
-                            turf_start,
-                            reachable_start,
-                            found_start,
-                            found_end,
-                            reachable_end,
-                            turf_end,
-                        });
+                    let turf_pair = LineHint::TurfPair {
+                        turf_start,
+                        reachable_start: found_end.saturating_sub(number),
+                        found_start,
+                        found_end,
+                        reachable_end,
+                        turf_end,
+                    };
+                    if turf_pair.check(line) {
+                        hints.push(turf_pair);
                     }
                 } else {
-                    let reachable_start = found_start.saturating_sub(number);
-                    line.cross_range(turf_start..reachable_start);
-                    line.cross_range(reachable_end..turf_end);
-                    if line.check_dirty() {
-                        hints.push(LineHint::TurfSingleton {
-                            turf_start,
-                            reachable_start,
-                            reachable_end,
-                            turf_end,
-                        });
+                    let turf_singleton = LineHint::TurfSingleton {
+                        turf_start,
+                        reachable_start: found_start.saturating_sub(number),
+                        reachable_end,
+                        turf_end,
+                    };
+                    if turf_singleton.check(line) {
+                        hints.push(turf_singleton);
                     }
                 }
             }
