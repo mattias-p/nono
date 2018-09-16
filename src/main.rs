@@ -16,44 +16,15 @@ use std::io::BufRead;
 use std::iter;
 
 use puzzle::Line;
+use puzzle::LineHint;
 use puzzle::LinePass;
 use puzzle::LinePassExt;
 
-#[derive(Debug)]
-enum LineHint {
-    CrowdedClue {
-        kernel_start: usize,
-        kernel_end: usize,
-    },
-    Unreachable {
-        reachable_start: usize,
-        reachable_end: usize,
-    },
-    Kernel {
-        kernel_start: usize,
-        kernel_end: usize,
-    },
-    Termination {
-        range_start: usize,
-        range_end: usize,
-    },
-    KernelTurf {
-        kernel_start: usize,
-        kernel_end: usize,
-        turf_start: usize,
-        turf_end: usize,
-    },
-    Turf {
-        turf_start: usize,
-        turf_end: usize,
-    },
-}
+struct CrowdedCluePass;
 
-struct OnlyCluesPass;
-
-impl LinePass for OnlyCluesPass {
-    fn run(&self, clue: &[usize], line: &mut Line) -> bool {
-        let mut is_dirty = false;
+impl LinePass for CrowdedCluePass {
+    fn run(&self, clue: &[usize], line: &mut Line) -> Vec<LineHint> {
+        let mut hints = vec![];
         let sum: usize = clue.iter().sum();
         let freedom: usize = line.len() - (sum + clue.len() - 1);
         let mut x0 = 0;
@@ -63,19 +34,15 @@ impl LinePass for OnlyCluesPass {
                 let kernel_end = x0 + number;
                 line.fill_range(kernel_start..kernel_end);
                 if line.check_dirty() {
-                    println!(
-                        "{:?}",
-                        LineHint::CrowdedClue {
-                            kernel_start,
-                            kernel_end
-                        }
-                    );
-                    is_dirty = true;
+                    hints.push(LineHint::CrowdedClue {
+                        kernel_start,
+                        kernel_end,
+                    });
                 }
             }
             x0 += number + 1;
         }
-        is_dirty
+        hints
     }
 }
 
@@ -145,8 +112,8 @@ impl<'a> ClueExt for &'a [usize] {
 struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {
-    fn run(&self, clue: &[usize], line: &mut Line) -> bool {
-        let mut is_dirty = false;
+    fn run(&self, clue: &[usize], line: &mut Line) -> Vec<LineHint> {
+        let mut hints = vec![];
         //println!("CLUE  {:?}", clue);
 
         let range_starts = clue.range_starts(line);
@@ -159,14 +126,10 @@ impl LinePass for ContinuousRangePass {
         line.cross_range(0..reachable_start);
         line.cross_range(reachable_end..len);
         if line.check_dirty() {
-            println!(
-                "{:?}",
-                LineHint::Unreachable {
-                    reachable_start,
-                    reachable_end
-                }
-            );
-            is_dirty = true;
+            hints.push(LineHint::Unreachable {
+                reachable_start,
+                reachable_end,
+            });
         }
 
         let turf_ends = range_starts
@@ -199,14 +162,10 @@ impl LinePass for ContinuousRangePass {
                 // kernel
                 line.fill_range(kernel_start..kernel_end);
                 if line.check_dirty() {
-                    println!(
-                        "{:?}",
-                        LineHint::Kernel {
-                            kernel_start,
-                            kernel_end,
-                        }
-                    );
-                    is_dirty = true;
+                    hints.push(LineHint::Kernel {
+                        kernel_start,
+                        kernel_end,
+                    });
                 }
 
                 if kernel_start == range_start && kernel_end == range_end {
@@ -218,14 +177,10 @@ impl LinePass for ContinuousRangePass {
                         line.cross(range_end);
                     }
                     if line.check_dirty() {
-                        println!(
-                            "{:?}",
-                            LineHint::Termination {
-                                range_start,
-                                range_end,
-                            }
-                        );
-                        is_dirty = true;
+                        hints.push(LineHint::Termination {
+                            range_start,
+                            range_end,
+                        });
                     }
                     continue;
                 }
@@ -240,16 +195,12 @@ impl LinePass for ContinuousRangePass {
                     line.cross_range(turf_start..found_end - number);
                 }
                 if line.check_dirty() {
-                    println!(
-                        "{:?}",
-                        LineHint::KernelTurf {
-                            kernel_start,
-                            kernel_end,
-                            turf_start,
-                            turf_end,
-                        }
-                    );
-                    is_dirty = true;
+                    hints.push(LineHint::KernelTurf {
+                        kernel_start,
+                        kernel_end,
+                        turf_start,
+                        turf_end,
+                    });
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
                 // drifting turf
@@ -262,18 +213,14 @@ impl LinePass for ContinuousRangePass {
                     line.cross_range(found_start + number..turf_end);
                 }
                 if line.check_dirty() {
-                    println!(
-                        "{:?}",
-                        LineHint::Turf {
-                            turf_start,
-                            turf_end,
-                        }
-                    );
-                    is_dirty = true;
+                    hints.push(LineHint::Turf {
+                        turf_start,
+                        turf_end,
+                    });
                 }
             }
         }
-        is_dirty
+        hints
     }
 }
 
@@ -288,18 +235,36 @@ fn main() {
             .unwrap();
         match puzzle::Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
+                let hints = CrowdedCluePass.apply_horz(&mut puzzle);
+                //println!("\nAfter crowded clue horz:\n{}", puzzle);
+                for hint in hints {
+                    println!("{:?}", hint);
+                }
+
+                let hints = CrowdedCluePass.apply_vert(&mut puzzle);
+                //println!("\nAfter crowded clue vert:\n{}", puzzle);
+                for hint in hints {
+                    println!("{:?}", hint);
+                }
+
+                let mut pass_counter = 1;
                 let mut is_dirty = true;
-                let mut pass_counter = 0;
                 while is_dirty {
                     is_dirty = false;
-                    if ContinuousRangePass.apply_horz(&mut puzzle) {
-                        is_dirty = true;
+
+                    let hints = ContinuousRangePass.apply_horz(&mut puzzle);
+                    is_dirty = is_dirty || !hints.is_empty();
+                    //println!("\nAfter continuous range horz:\n{}", puzzle);
+                    for hint in hints {
+                        println!("{:?}", hint);
                     }
-                    //println!("\nAfter horz:\n{}", puzzle);
-                    if ContinuousRangePass.apply_vert(&mut puzzle) {
-                        is_dirty = true;
+
+                    let hints = ContinuousRangePass.apply_vert(&mut puzzle);
+                    is_dirty = is_dirty || !hints.is_empty();
+                    for hint in hints {
+                        println!("{:?}", hint);
                     }
-                    //println!("\nAfter vert:\n{}", puzzle);
+                    //println!("\nAfter continuous range vert:\n{}", puzzle);
                     pass_counter += 1;
                 }
                 println!("Number of passes: {}", pass_counter - 1);

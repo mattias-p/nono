@@ -7,49 +7,75 @@ use std::ops::Range;
 
 use parser;
 
+#[derive(Debug)]
+pub enum LineHint {
+    CrowdedClue {
+        kernel_start: usize,
+        kernel_end: usize,
+    },
+    Unreachable {
+        reachable_start: usize,
+        reachable_end: usize,
+    },
+    Kernel {
+        kernel_start: usize,
+        kernel_end: usize,
+    },
+    Termination {
+        range_start: usize,
+        range_end: usize,
+    },
+    KernelTurf {
+        kernel_start: usize,
+        kernel_end: usize,
+        turf_start: usize,
+        turf_end: usize,
+    },
+    Turf {
+        turf_start: usize,
+        turf_end: usize,
+    },
+}
+
 pub trait LinePass {
-    fn run(&self, clue: &[usize], line: &mut Line) -> bool;
+    fn run(&self, clue: &[usize], line: &mut Line) -> Vec<LineHint>;
 }
 
 pub trait LinePassExt {
-    fn apply_horz(&self, puzzle: &mut Puzzle) -> bool;
-    fn apply_vert(&self, puzzle: &mut Puzzle) -> bool;
+    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<LineHint>;
+    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<LineHint>;
 }
 
 impl<T: LinePass> LinePassExt for T {
-    fn apply_horz(&self, puzzle: &mut Puzzle) -> bool {
-        let mut is_dirty = false;
+    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<LineHint> {
+        let mut hints = vec![];
         for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
-            if self.run(
+            hints.extend(self.run(
                 clue.0.as_slice(),
                 &mut HorzLine {
                     grid: &mut puzzle.grid,
                     y,
                     is_dirty: false,
                 },
-            ) {
-                is_dirty = true;
-            }
+            ));
             //println!("\nAfter horz line:\n{}", puzzle);
         }
-        is_dirty
+        hints
     }
-    fn apply_vert(&self, puzzle: &mut Puzzle) -> bool {
-        let mut is_dirty = false;
+    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<LineHint> {
+        let mut hints = vec![];
         for (x, clue) in puzzle.vert_clues.0.iter().enumerate() {
-            if self.run(
+            hints.extend(self.run(
                 clue.0.as_slice(),
                 &mut VertLine {
                     grid: &mut puzzle.grid,
                     x,
                     is_dirty: false,
                 },
-            ) {
-                is_dirty = true;
-            }
+            ))
             //println!("\nAfter vert line:\n{}", puzzle);
         }
-        is_dirty
+        hints
     }
 }
 
