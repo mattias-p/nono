@@ -7,193 +7,9 @@ use std::ops::Range;
 
 use parser;
 
-#[derive(Debug)]
-pub enum LineHint {
-    CrowdedClue {
-        kernel_start: usize,
-        kernel_end: usize,
-    },
-    Unreachable {
-        reachable_start: usize,
-        reachable_end: usize,
-    },
-    Kernel {
-        kernel_start: usize,
-        kernel_end: usize,
-    },
-    Termination {
-        range_start: usize,
-        range_end: usize,
-    },
-    TurfNearSingleton {
-        found_start: usize,
-        kernel_start: usize,
-        reachable_end: usize,
-        turf_end: usize,
-    },
-    TurfFarSingleton {
-        turf_start: usize,
-        reachable_start: usize,
-        kernel_end: usize,
-        found_end: usize,
-    },
-    TurfPair {
-        turf_start: usize,
-        reachable_start: usize,
-        found_start: usize,
-        found_end: usize,
-        reachable_end: usize,
-        turf_end: usize,
-    },
-    TurfSingleton {
-        turf_start: usize,
-        reachable_start: usize,
-        reachable_end: usize,
-        turf_end: usize,
-    },
-}
-
-impl LineHint {
-    pub fn check(&self, line: &Line) -> bool {
-        match self {
-            &LineHint::CrowdedClue {
-                kernel_start,
-                kernel_end,
-            } => line.range_contains_unfilled(kernel_start..kernel_end),
-            &LineHint::Unreachable {
-                reachable_start,
-                reachable_end,
-            } => {
-                let len = line.len();
-                line.range_contains_uncrossed(0..reachable_start)
-                    || line.range_contains_uncrossed(reachable_end..len)
-            }
-            &LineHint::Kernel {
-                kernel_start,
-                kernel_end,
-            } => line.range_contains_unfilled(kernel_start..kernel_end),
-            &LineHint::Termination {
-                range_start,
-                range_end,
-            } => {
-                (range_start > 0 && !line.is_crossed(range_start - 1))
-                    || (range_end < line.len() && !line.is_crossed(range_end))
-            }
-            &LineHint::TurfNearSingleton {
-                found_start,
-                kernel_start,
-                reachable_end,
-                turf_end,
-            } => {
-                line.range_contains_unfilled(found_start..kernel_start)
-                    || line.range_contains_uncrossed(reachable_end..turf_end)
-            }
-            &LineHint::TurfFarSingleton {
-                turf_start,
-                reachable_start,
-                kernel_end,
-                found_end,
-            } => {
-                line.range_contains_uncrossed(turf_start..reachable_start)
-                    || line.range_contains_unfilled(kernel_end..found_end)
-            }
-            &LineHint::TurfPair {
-                turf_start,
-                reachable_start,
-                found_start,
-                found_end,
-                reachable_end,
-                turf_end,
-            } => {
-                line.range_contains_uncrossed(turf_start..reachable_start)
-                    || line.range_contains_unfilled(found_start + 1..found_end - 1)
-                    || line.range_contains_uncrossed(reachable_end..turf_end)
-            }
-            &LineHint::TurfSingleton {
-                turf_start,
-                reachable_start,
-                reachable_end,
-                turf_end,
-            } => {
-                line.range_contains_uncrossed(turf_start..reachable_start)
-                    || line.range_contains_uncrossed(reachable_end..turf_end)
-            }
-        }
-    }
-    pub fn apply(&self, line: &mut Line) {
-        match self {
-            &LineHint::CrowdedClue {
-                kernel_start,
-                kernel_end,
-            } => {
-                line.fill_range(kernel_start..kernel_end);
-            }
-            &LineHint::Unreachable {
-                reachable_start,
-                reachable_end,
-            } => {
-                let len = line.len();
-                line.cross_range(0..reachable_start);
-                line.cross_range(reachable_end..len);
-            }
-            &LineHint::Kernel {
-                kernel_start,
-                kernel_end,
-            } => {
-                line.fill_range(kernel_start..kernel_end);
-            }
-            &LineHint::Termination {
-                range_start,
-                range_end,
-            } => {
-                if range_start > 0 {
-                    line.cross(range_start - 1);
-                }
-                if range_end < line.len() {
-                    line.cross(range_end);
-                }
-            }
-            &LineHint::TurfNearSingleton {
-                found_start,
-                kernel_start,
-                reachable_end,
-                turf_end,
-            } => {
-                line.fill_range(found_start..kernel_start);
-                line.cross_range(reachable_end..turf_end);
-            }
-            &LineHint::TurfFarSingleton {
-                turf_start,
-                reachable_start,
-                kernel_end,
-                found_end,
-            } => {
-                line.cross_range(turf_start..reachable_start);
-                line.fill_range(kernel_end..found_end);
-            }
-            &LineHint::TurfPair {
-                turf_start,
-                reachable_start,
-                found_start,
-                found_end,
-                reachable_end,
-                turf_end,
-            } => {
-                line.cross_range(turf_start..reachable_start);
-                line.fill_range(found_start + 1..found_end - 1);
-                line.cross_range(reachable_end..turf_end);
-            }
-            &LineHint::TurfSingleton {
-                turf_start,
-                reachable_start,
-                reachable_end,
-                turf_end,
-            } => {
-                line.cross_range(turf_start..reachable_start);
-                line.cross_range(reachable_end..turf_end);
-            }
-        }
-    }
+pub trait LineHint: fmt::Debug {
+    fn check(&self, line: &Line) -> bool;
+    fn apply(&self, line: &mut Line);
 }
 
 #[derive(Debug)]
@@ -206,11 +22,11 @@ enum Orientation {
 pub struct Hint {
     orientation: Orientation,
     line: usize,
-    line_hint: LineHint,
+    line_hint: Box<LineHint>,
 }
 
 pub trait LinePass {
-    fn run(&self, clue: &[usize], line: &Line) -> Vec<LineHint>;
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<LineHint>>;
 }
 
 pub trait LinePassExt {

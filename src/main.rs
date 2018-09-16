@@ -20,20 +20,35 @@ use puzzle::LineHint;
 use puzzle::LinePass;
 use puzzle::LinePassExt;
 
+#[derive(Debug)]
+struct CrowdedClueHint {
+    kernel_start: usize,
+    kernel_end: usize,
+}
+
+impl LineHint for CrowdedClueHint {
+    fn check(&self, line: &Line) -> bool {
+        line.range_contains_unfilled(self.kernel_start..self.kernel_end)
+    }
+    fn apply(&self, line: &mut Line) {
+        line.fill_range(self.kernel_start..self.kernel_end);
+    }
+}
+
 struct CrowdedCluePass;
 
 impl LinePass for CrowdedCluePass {
-    fn run(&self, clue: &[usize], line: &Line) -> Vec<LineHint> {
-        let mut hints = vec![];
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<LineHint>> {
+        let mut hints: Vec<Box<LineHint>> = vec![];
         let sum: usize = clue.iter().sum();
         let freedom: usize = line.len() - (sum + clue.len() - 1);
         let mut x0 = 0;
         for number in clue.iter() {
             if *number > freedom {
-                let hint = LineHint::CrowdedClue {
+                let hint = Box::new(CrowdedClueHint {
                     kernel_start: x0 + freedom,
                     kernel_end: x0 + number,
-                };
+                });
                 if hint.check(line) {
                     hints.push(hint);
                 }
@@ -47,6 +62,181 @@ impl LinePass for CrowdedCluePass {
 trait ClueExt {
     fn range_starts(&self, line: &Line) -> Vec<usize>;
     fn range_ends(&self, line: &Line) -> Vec<usize>;
+}
+
+#[derive(Debug)]
+pub enum ContinuousRangeHint {
+    Unreachable {
+        reachable_start: usize,
+        reachable_end: usize,
+    },
+    Kernel {
+        kernel_start: usize,
+        kernel_end: usize,
+    },
+    Termination {
+        range_start: usize,
+        range_end: usize,
+    },
+    TurfNearSingleton {
+        found_start: usize,
+        kernel_start: usize,
+        reachable_end: usize,
+        turf_end: usize,
+    },
+    TurfFarSingleton {
+        turf_start: usize,
+        reachable_start: usize,
+        kernel_end: usize,
+        found_end: usize,
+    },
+    TurfPair {
+        turf_start: usize,
+        reachable_start: usize,
+        found_start: usize,
+        found_end: usize,
+        reachable_end: usize,
+        turf_end: usize,
+    },
+    TurfSingleton {
+        turf_start: usize,
+        reachable_start: usize,
+        reachable_end: usize,
+        turf_end: usize,
+    },
+}
+
+impl LineHint for ContinuousRangeHint {
+    fn check(&self, line: &Line) -> bool {
+        match self {
+            &ContinuousRangeHint::Unreachable {
+                reachable_start,
+                reachable_end,
+            } => {
+                let len = line.len();
+                line.range_contains_uncrossed(0..reachable_start)
+                    || line.range_contains_uncrossed(reachable_end..len)
+            }
+            &ContinuousRangeHint::Kernel {
+                kernel_start,
+                kernel_end,
+            } => line.range_contains_unfilled(kernel_start..kernel_end),
+            &ContinuousRangeHint::Termination {
+                range_start,
+                range_end,
+            } => {
+                (range_start > 0 && !line.is_crossed(range_start - 1))
+                    || (range_end < line.len() && !line.is_crossed(range_end))
+            }
+            &ContinuousRangeHint::TurfNearSingleton {
+                found_start,
+                kernel_start,
+                reachable_end,
+                turf_end,
+            } => {
+                line.range_contains_unfilled(found_start..kernel_start)
+                    || line.range_contains_uncrossed(reachable_end..turf_end)
+            }
+            &ContinuousRangeHint::TurfFarSingleton {
+                turf_start,
+                reachable_start,
+                kernel_end,
+                found_end,
+            } => {
+                line.range_contains_uncrossed(turf_start..reachable_start)
+                    || line.range_contains_unfilled(kernel_end..found_end)
+            }
+            &ContinuousRangeHint::TurfPair {
+                turf_start,
+                reachable_start,
+                found_start,
+                found_end,
+                reachable_end,
+                turf_end,
+            } => {
+                line.range_contains_uncrossed(turf_start..reachable_start)
+                    || line.range_contains_unfilled(found_start + 1..found_end - 1)
+                    || line.range_contains_uncrossed(reachable_end..turf_end)
+            }
+            &ContinuousRangeHint::TurfSingleton {
+                turf_start,
+                reachable_start,
+                reachable_end,
+                turf_end,
+            } => {
+                line.range_contains_uncrossed(turf_start..reachable_start)
+                    || line.range_contains_uncrossed(reachable_end..turf_end)
+            }
+        }
+    }
+    fn apply(&self, line: &mut Line) {
+        match self {
+            &ContinuousRangeHint::Unreachable {
+                reachable_start,
+                reachable_end,
+            } => {
+                let len = line.len();
+                line.cross_range(0..reachable_start);
+                line.cross_range(reachable_end..len);
+            }
+            &ContinuousRangeHint::Kernel {
+                kernel_start,
+                kernel_end,
+            } => {
+                line.fill_range(kernel_start..kernel_end);
+            }
+            &ContinuousRangeHint::Termination {
+                range_start,
+                range_end,
+            } => {
+                if range_start > 0 {
+                    line.cross(range_start - 1);
+                }
+                if range_end < line.len() {
+                    line.cross(range_end);
+                }
+            }
+            &ContinuousRangeHint::TurfNearSingleton {
+                found_start,
+                kernel_start,
+                reachable_end,
+                turf_end,
+            } => {
+                line.fill_range(found_start..kernel_start);
+                line.cross_range(reachable_end..turf_end);
+            }
+            &ContinuousRangeHint::TurfFarSingleton {
+                turf_start,
+                reachable_start,
+                kernel_end,
+                found_end,
+            } => {
+                line.cross_range(turf_start..reachable_start);
+                line.fill_range(kernel_end..found_end);
+            }
+            &ContinuousRangeHint::TurfPair {
+                turf_start,
+                reachable_start,
+                found_start,
+                found_end,
+                reachable_end,
+                turf_end,
+            } => {
+                line.cross_range(turf_start..reachable_start);
+                line.fill_range(found_start + 1..found_end - 1);
+                line.cross_range(reachable_end..turf_end);
+            }
+            &ContinuousRangeHint::TurfSingleton {
+                turf_start,
+                reachable_start,
+                reachable_end,
+                turf_end,
+            } => {
+                line.cross_range(turf_start..reachable_start);
+                line.cross_range(reachable_end..turf_end);
+            }
+        }
+    }
 }
 
 impl<'a> ClueExt for &'a [usize] {
@@ -110,20 +300,20 @@ impl<'a> ClueExt for &'a [usize] {
 struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {
-    fn run(&self, clue: &[usize], line: &Line) -> Vec<LineHint> {
-        let mut hints = vec![];
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<LineHint>> {
+        let mut hints: Vec<Box<LineHint>> = vec![];
         //println!("CLUE  {:?}", clue);
 
         let range_starts = clue.range_starts(line);
         let range_ends = clue.range_ends(line);
 
         // unreachable cells
-        let unreachable = LineHint::Unreachable {
+        let unreachable = ContinuousRangeHint::Unreachable {
             reachable_start: range_starts[0],
             reachable_end: range_ends[0],
         };
         if unreachable.check(line) {
-            hints.push(unreachable);
+            hints.push(Box::new(unreachable));
         }
 
         let len = line.len();
@@ -155,46 +345,46 @@ impl LinePass for ContinuousRangePass {
                 //println!("kernel {}..{}", kernel_start, kernel_end);
 
                 // kernel
-                let kernel = LineHint::Kernel {
+                let kernel = ContinuousRangeHint::Kernel {
                     kernel_start,
                     kernel_end,
                 };
                 if kernel.check(line) {
-                    hints.push(kernel);
+                    hints.push(Box::new(kernel));
                 }
 
                 if kernel_start == range_start && kernel_end == range_end {
-                    let termination = LineHint::Termination {
+                    let termination = ContinuousRangeHint::Termination {
                         range_start,
                         range_end,
                     };
                     if termination.check(line) {
-                        hints.push(termination);
+                        hints.push(Box::new(termination));
                     }
                     continue;
                 }
 
                 // kernel turf
                 if let Some(found_start) = (turf_start..kernel_start).find(|x| line.is_filled(*x)) {
-                    let turf_near_singleton = LineHint::TurfNearSingleton {
+                    let turf_near_singleton = ContinuousRangeHint::TurfNearSingleton {
                         found_start,
                         kernel_start,
                         reachable_end: found_start + number,
                         turf_end,
                     };
                     if turf_near_singleton.check(line) {
-                        hints.push(turf_near_singleton);
+                        hints.push(Box::new(turf_near_singleton));
                     }
                 }
                 if let Some(found_end) = (kernel_end..turf_end).rev().find(|x| line.is_filled(*x)) {
-                    let turf_far_singleton = LineHint::TurfFarSingleton {
+                    let turf_far_singleton = ContinuousRangeHint::TurfFarSingleton {
                         turf_start,
                         reachable_start: found_end - number,
                         kernel_end,
                         found_end,
                     };
                     if turf_far_singleton.check(line) {
-                        hints.push(turf_far_singleton);
+                        hints.push(Box::new(turf_far_singleton));
                     }
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
@@ -203,7 +393,7 @@ impl LinePass for ContinuousRangePass {
                     .rev()
                     .find(|x| line.is_filled(*x))
                 {
-                    let turf_pair = LineHint::TurfPair {
+                    let turf_pair = ContinuousRangeHint::TurfPair {
                         turf_start,
                         reachable_start: found_end.saturating_sub(number),
                         found_start,
@@ -212,17 +402,17 @@ impl LinePass for ContinuousRangePass {
                         turf_end,
                     };
                     if turf_pair.check(line) {
-                        hints.push(turf_pair);
+                        hints.push(Box::new(turf_pair));
                     }
                 } else {
-                    let turf_singleton = LineHint::TurfSingleton {
+                    let turf_singleton = ContinuousRangeHint::TurfSingleton {
                         turf_start,
                         reachable_start: found_start.saturating_sub(number),
                         reachable_end,
                         turf_end,
                     };
                     if turf_singleton.check(line) {
-                        hints.push(turf_singleton);
+                        hints.push(Box::new(turf_singleton));
                     }
                 }
             }
