@@ -1,7 +1,8 @@
 # nono
 Nonogram hint dispenser
 
-At this time it only implements very basic techniques and isn't very specific about its hints.
+At this time it only implements very basic techniques.
+I made up the entire terminology around the hints by myself and there's no documentation of it.
 
 
 ## Getting started
