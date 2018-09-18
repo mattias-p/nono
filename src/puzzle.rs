@@ -41,7 +41,6 @@ impl<T: LinePass> LinePassExt for T {
             let mut line = HorzLine {
                 grid: &mut puzzle.grid,
                 y,
-                is_dirty: false,
             };
             for line_hint in self.run(clue.0.as_slice(), &line) {
                 line_hint.apply(&mut line);
@@ -61,7 +60,6 @@ impl<T: LinePass> LinePassExt for T {
             let mut line = VertLine {
                 grid: &mut puzzle.grid,
                 x,
-                is_dirty: false,
             };
             for line_hint in self.run(clue.0.as_slice(), &line) {
                 line_hint.apply(&mut line);
@@ -85,7 +83,6 @@ pub trait Line {
     fn cross_range(&mut self, r: Range<usize>);
     fn fill_range(&mut self, r: Range<usize>);
     fn len(&self) -> usize;
-    fn check_dirty(&mut self) -> bool;
     fn range_contains_unfilled(&self, r: Range<usize>) -> bool;
     fn range_contains_uncrossed(&self, r: Range<usize>) -> bool;
 }
@@ -93,7 +90,6 @@ pub trait Line {
 struct HorzLine<'a> {
     grid: &'a mut Grid,
     y: usize,
-    is_dirty: bool,
 }
 
 impl<'a> Line for HorzLine<'a> {
@@ -104,35 +100,19 @@ impl<'a> Line for HorzLine<'a> {
         self.grid.is_filled(x, self.y)
     }
     fn cross(&mut self, x: usize) {
-        if self.grid.cross(x, self.y) {
-            self.is_dirty = true;
-        }
+        self.grid.cross(x, self.y);
     }
     fn fill(&mut self, x: usize) {
-        if self.grid.fill(x, self.y) {
-            self.is_dirty = true;
-        }
+        self.grid.fill(x, self.y);
     }
     fn cross_range(&mut self, xs: Range<usize>) {
-        if self.grid.cross_horz(xs, self.y) {
-            self.is_dirty = true;
-        }
+        self.grid.cross_horz(xs, self.y);
     }
     fn fill_range(&mut self, xs: Range<usize>) {
-        if self.grid.fill_horz(xs, self.y) {
-            self.is_dirty = true;
-        }
+        self.grid.fill_horz(xs, self.y);
     }
     fn len(&self) -> usize {
         self.grid.width
-    }
-    fn check_dirty(&mut self) -> bool {
-        if self.is_dirty {
-            self.is_dirty = false;
-            true
-        } else {
-            false
-        }
     }
     fn range_contains_unfilled(&self, xs: Range<usize>) -> bool {
         for x in xs {
@@ -155,7 +135,6 @@ impl<'a> Line for HorzLine<'a> {
 struct VertLine<'a> {
     grid: &'a mut Grid,
     x: usize,
-    is_dirty: bool,
 }
 
 impl<'a> Line for VertLine<'a> {
@@ -166,35 +145,19 @@ impl<'a> Line for VertLine<'a> {
         self.grid.is_filled(self.x, y)
     }
     fn cross(&mut self, y: usize) {
-        if self.grid.cross(self.x, y) {
-            self.is_dirty = true;
-        }
+        self.grid.cross(self.x, y);
     }
     fn fill(&mut self, y: usize) {
-        if self.grid.fill(self.x, y) {
-            self.is_dirty = true;
-        }
+        self.grid.fill(self.x, y);
     }
     fn cross_range(&mut self, ys: Range<usize>) {
-        if self.grid.cross_vert(self.x, ys) {
-            self.is_dirty = true;
-        }
+        self.grid.cross_vert(self.x, ys);
     }
     fn fill_range(&mut self, ys: Range<usize>) {
-        if self.grid.fill_vert(self.x, ys) {
-            self.is_dirty = true;
-        }
+        self.grid.fill_vert(self.x, ys);
     }
     fn len(&self) -> usize {
         self.grid.height
-    }
-    fn check_dirty(&mut self) -> bool {
-        if self.is_dirty {
-            self.is_dirty = false;
-            true
-        } else {
-            false
-        }
     }
     fn range_contains_unfilled(&self, ys: Range<usize>) -> bool {
         for y in ys {
@@ -236,23 +199,15 @@ impl Grid {
             (true, true) => Cell::Impossible,
         }
     }
-    fn fill_horz(&mut self, xs: Range<usize>, y: usize) -> bool {
-        let mut is_dirty = false;
+    fn fill_horz(&mut self, xs: Range<usize>, y: usize) {
         for x in xs {
-            if self.fill(x, y) {
-                is_dirty = true;
-            }
+            self.fill(x, y);
         }
-        is_dirty
     }
-    fn fill_vert(&mut self, x: usize, ys: Range<usize>) -> bool {
-        let mut is_dirty = false;
+    fn fill_vert(&mut self, x: usize, ys: Range<usize>) {
         for y in ys {
-            if self.fill(x, y) {
-                is_dirty = true;
-            }
+            self.fill(x, y);
         }
-        is_dirty
     }
     fn fill(&mut self, x: usize, y: usize) -> bool {
         let i = self.index(x, y);
@@ -266,23 +221,15 @@ impl Grid {
         self.crossed.put(i);
         !old_value
     }
-    fn cross_horz(&mut self, xs: Range<usize>, y: usize) -> bool {
-        let mut is_dirty = false;
+    fn cross_horz(&mut self, xs: Range<usize>, y: usize) {
         for x in xs {
-            if self.cross(x, y) {
-                is_dirty = true;
-            }
+            self.cross(x, y);
         }
-        is_dirty
     }
-    fn cross_vert(&mut self, x: usize, ys: Range<usize>) -> bool {
-        let mut is_dirty = false;
+    fn cross_vert(&mut self, x: usize, ys: Range<usize>) {
         for y in ys {
-            if self.cross(x, y) {
-                is_dirty = true;
-            }
+            self.cross(x, y);
         }
-        is_dirty
     }
     fn is_crossed(&self, x: usize, y: usize) -> bool {
         let i = self.index(x, y);
