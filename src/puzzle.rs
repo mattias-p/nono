@@ -81,16 +81,19 @@ pub trait Line {
     fn is_filled(&self, i: usize) -> bool;
     fn cross(&mut self, i: usize);
     fn fill(&mut self, i: usize);
+
     fn cross_range(&mut self, r: Range<usize>) {
         for i in r {
             self.cross(i);
         }
     }
+
     fn fill_range(&mut self, r: Range<usize>) {
         for i in r {
             self.fill(i);
         }
     }
+
     fn range_contains_unfilled(&self, r: Range<usize>) -> bool {
         for i in r {
             if !self.is_filled(i) {
@@ -99,6 +102,7 @@ pub trait Line {
         }
         false
     }
+
     fn range_contains_uncrossed(&self, r: Range<usize>) -> bool {
         for i in r {
             if !self.is_crossed(i) {
@@ -106,6 +110,51 @@ pub trait Line {
             }
         }
         false
+    }
+
+    fn bump_start(&self, mut start: usize, number: usize) -> usize {
+        //println!("  starts start {}", start);
+        //println!("  starts number {}", number);
+        let mut focus = start;
+        while focus < (start + number).min(self.len()) {
+            if self.is_crossed(focus) {
+                // pushing cross
+                //println!("  starts pushed by cross at {}", focus);
+                start = focus + 1;
+            }
+            focus += 1;
+        }
+        while focus < self.len() && self.is_filled(focus) {
+            // pulling fill
+            //println!("  starts pulled by fill at {}", focus);
+            focus += 1;
+        }
+
+        focus - number
+    }
+
+    fn bump_last(&self, last: usize, number: usize) -> isize {
+        let mut last = last as isize;
+        let number = number as isize;
+        //println!("  ends last {}", last);
+        //println!("  ends number {}", number);
+        let mut focus: isize = last;
+        while focus >= 0 && focus + number >= last + 1 {
+            if self.is_crossed(focus as usize) {
+                // pushing cross
+                //println!("  ends pushed by cross at {}", focus);
+                last = focus - 1;
+            }
+            focus -= 1;
+        }
+        while focus >= 0 && self.is_filled(focus as usize) {
+            // pulling fill
+            //println!("  ends pulled by fill at {}", focus);
+            focus -= 1;
+        }
+
+        assert!(focus + number + 1 <= self.len() as isize);
+        focus + number + 1
     }
 }
 
