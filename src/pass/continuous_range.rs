@@ -9,29 +9,59 @@ pub trait ClueExt {
     fn range_ends(&self, line: &Line) -> Vec<usize>;
 }
 
+fn bump_start(line: &Line, mut start: usize, number: usize) -> usize {
+    //println!("  starts start {}", start);
+    //println!("  starts number {}", number);
+    let mut focus = start;
+    while focus < (start + number).min(line.len()) {
+        if line.is_crossed(focus) {
+            // pushing cross
+            //println!("  starts pushed by cross at {}", focus);
+            start = focus + 1;
+        }
+        focus += 1;
+    }
+    while focus < line.len() && line.is_filled(focus) {
+        // pulling fill
+        //println!("  starts pulled by fill at {}", focus);
+        focus += 1;
+    }
+
+    focus - number
+}
+
+fn bump_last(line: &Line, last: usize, number: usize) -> isize {
+    let mut last = last as isize;
+    let number = number as isize;
+    //println!("  ends last {}", last);
+    //println!("  ends number {}", number);
+    let mut focus: isize = last;
+    while focus >= 0 && focus + number >= last + 1 {
+        if line.is_crossed(focus as usize) {
+            // pushing cross
+            //println!("  ends pushed by cross at {}", focus);
+            last = focus - 1;
+        }
+        focus -= 1;
+    }
+    while focus >= 0 && line.is_filled(focus as usize) {
+        // pulling fill
+        //println!("  ends pulled by fill at {}", focus);
+        focus -= 1;
+    }
+
+    assert!(focus + number + 1 <= line.len() as isize);
+    focus + number + 1
+}
+
 impl<'a> ClueExt for &'a [usize] {
     fn range_starts(&self, line: &Line) -> Vec<usize> {
         let mut range_starts = Vec::with_capacity(self.len());
         let mut start = 0;
         for number in self.iter() {
-            //println!("  starts start {}", start);
-            //println!("  starts number {}", number);
-            let mut focus = start;
-            while focus < (start + number).min(line.len()) {
-                if line.is_crossed(focus) {
-                    // pushing cross
-                    //println!("  starts pushed by cross at {}", focus);
-                    start = focus + 1;
-                }
-                focus += 1;
-            }
-            while focus < line.len() && line.is_filled(focus) {
-                // pulling fill
-                //println!("  starts pulled by fill at {}", focus);
-                focus += 1;
-            }
-            range_starts.push(focus - number);
-            start = focus + 1;
+            start = bump_start(line, start, *number);
+            range_starts.push(start);
+            start += number + 1;
         }
         //println!("  starts {:?}", range_starts);
         range_starts
@@ -39,28 +69,11 @@ impl<'a> ClueExt for &'a [usize] {
 
     fn range_ends(&self, line: &Line) -> Vec<usize> {
         let mut range_ends = Vec::with_capacity(self.len());
-        let mut last: isize = line.len() as isize - 1;
+        let mut last = line.len() as isize - 1;
         for number in self.iter().rev() {
-            let number = *number as isize;
-            //println!("  ends last {}", last);
-            //println!("  ends number {}", number);
-            let mut focus: isize = last;
-            while focus >= 0 && focus + number >= last + 1 {
-                if line.is_crossed(focus as usize) {
-                    // pushing cross
-                    //println!("  ends pushed by cross at {}", focus);
-                    last = focus - 1;
-                }
-                focus -= 1;
-            }
-            while focus >= 0 && line.is_filled(focus as usize) {
-                // pulling fill
-                //println!("  ends pulled by fill at {}", focus);
-                focus -= 1;
-            }
-            assert!(focus + number + 1 <= line.len() as isize);
-            range_ends.push((focus + 1 + number) as usize);
-            last = focus - 1;
+            last = bump_last(line, last as usize, *number);
+            range_ends.push(last as usize);
+            last -= *number as isize + 2;
         }
         //println!("  ends {:?}", range_ends);
         range_ends
