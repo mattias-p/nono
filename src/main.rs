@@ -17,6 +17,7 @@ use parser::NonoParser;
 use parser::Rule;
 use pass::ContinuousRangePass;
 use pass::CrowdedCluePass;
+use pass::DiscreteRangePass;
 use puzzle::LinePass;
 use puzzle::LinePassExt;
 use puzzle::Orientation;
@@ -68,6 +69,12 @@ fn main() {
                             &mut puzzle,
                             pass_counter,
                         ) {
+                            is_dirty = true;
+                        }
+
+                        if !is_dirty
+                            && apply(&DiscreteRangePass, &orientation, &mut puzzle, pass_counter)
+                        {
                             is_dirty = true;
                         }
                     }

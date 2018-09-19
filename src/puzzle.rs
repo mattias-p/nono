@@ -88,12 +88,47 @@ impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
     }
 }
 
+struct ReverseLine(Box<Line>);
+
+impl Line for ReverseLine {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+    fn get(&self, i: usize) -> Cell {
+        self.0.get(i)
+    }
+    fn is_crossed(&self, i: usize) -> bool {
+        let i = self.0.len() - 1 - i;
+        self.0.is_crossed(i)
+    }
+    fn is_filled(&self, i: usize) -> bool {
+        let i = self.0.len() - 1 - i;
+        self.0.is_filled(i)
+    }
+    fn cross(&mut self, i: usize) {
+        let i = self.0.len() - 1 - i;
+        self.0.cross(i)
+    }
+    fn fill(&mut self, i: usize) {
+        let i = self.0.len() - 1 - i;
+        self.0.fill(i)
+    }
+}
+
 pub trait Line {
     fn len(&self) -> usize;
+    fn get(&self, i: usize) -> Cell;
     fn is_crossed(&self, i: usize) -> bool;
     fn is_filled(&self, i: usize) -> bool;
     fn cross(&mut self, i: usize);
     fn fill(&mut self, i: usize);
+
+    fn rev(self: Box<Self>) -> ReverseLine
+    where
+        Self: 'static + Sized,
+    {
+        ReverseLine(self)
+    }
 
     fn cross_range(&mut self, r: Range<usize>) {
         for i in r {
@@ -105,6 +140,15 @@ pub trait Line {
         for i in r {
             self.fill(i);
         }
+    }
+
+    fn range_contains_filled(&self, r: Range<usize>) -> bool {
+        for i in r {
+            if self.is_filled(i) {
+                return true;
+            }
+        }
+        false
     }
 
     fn range_contains_unfilled(&self, r: Range<usize>) -> bool {
@@ -126,7 +170,7 @@ pub trait Line {
     }
 
     fn bump_start(&self, start: usize, number: usize) -> usize {
-        println!("BUMP START {} {}", start, number);
+        //println!("BUMP START {} {}", start, number);
         //if start > 0 { println!("  check filled {}", start - 1); }
         let mut start = if start > 0 && self.is_filled(start - 1) {
             //println!("  pushed");
@@ -185,6 +229,9 @@ pub struct HorzLine<'a> {
 }
 
 impl<'a> Line for HorzLine<'a> {
+    fn get(&self, x: usize) -> Cell {
+        self.grid.get(x, self.y)
+    }
     fn is_crossed(&self, x: usize) -> bool {
         self.grid.is_crossed(x, self.y)
     }
@@ -208,6 +255,9 @@ pub struct VertLine<'a> {
 }
 
 impl<'a> Line for VertLine<'a> {
+    fn get(&self, y: usize) -> Cell {
+        self.grid.get(self.x, y)
+    }
     fn is_crossed(&self, y: usize) -> bool {
         self.grid.is_crossed(self.x, y)
     }
