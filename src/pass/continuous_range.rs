@@ -36,7 +36,7 @@ impl<'a> ClueExt for &'a [usize] {
 }
 
 #[derive(Debug)]
-struct Unreachable {
+pub struct Unreachable {
     reachable_start: usize,
     reachable_end: usize,
 }
@@ -55,7 +55,7 @@ impl LineHint for Unreachable {
 }
 
 #[derive(Debug)]
-struct Kernel {
+pub struct Kernel {
     kernel_start: usize,
     kernel_end: usize,
 }
@@ -70,7 +70,7 @@ impl LineHint for Kernel {
 }
 
 #[derive(Debug)]
-struct Termination {
+pub struct Termination {
     range_start: usize,
     range_end: usize,
 }
@@ -91,7 +91,7 @@ impl LineHint for Termination {
 }
 
 #[derive(Debug)]
-struct TurfNearSingleton {
+pub struct TurfNearSingleton {
     found_start: usize,
     kernel_start: usize,
     reachable_end: usize,
@@ -110,7 +110,7 @@ impl LineHint for TurfNearSingleton {
 }
 
 #[derive(Debug)]
-struct TurfFarSingleton {
+pub struct TurfFarSingleton {
     turf_start: usize,
     reachable_start: usize,
     kernel_end: usize,
@@ -129,7 +129,7 @@ impl LineHint for TurfFarSingleton {
 }
 
 #[derive(Debug)]
-struct TurfPair {
+pub struct TurfPair {
     turf_start: usize,
     reachable_start: usize,
     found_start: usize,
@@ -152,7 +152,7 @@ impl LineHint for TurfPair {
 }
 
 #[derive(Debug)]
-struct TurfSingleton {
+pub struct TurfSingleton {
     turf_start: usize,
     reachable_start: usize,
     reachable_end: usize,
@@ -170,11 +170,48 @@ impl LineHint for TurfSingleton {
     }
 }
 
+#[derive(Debug)]
+pub enum ContinuousRangeHint {
+    Unreachable(Unreachable),
+    Kernel(Kernel),
+    Termination(Termination),
+    TurfNearSingleton(TurfNearSingleton),
+    TurfFarSingleton(TurfFarSingleton),
+    TurfPair(TurfPair),
+    TurfSingleton(TurfSingleton),
+}
+
+impl LineHint for ContinuousRangeHint {
+    fn check(&self, line: &Line) -> bool {
+        match self {
+            ContinuousRangeHint::Unreachable(inner) => inner.check(line),
+            ContinuousRangeHint::Kernel(inner) => inner.check(line),
+            ContinuousRangeHint::Termination(inner) => inner.check(line),
+            ContinuousRangeHint::TurfNearSingleton(inner) => inner.check(line),
+            ContinuousRangeHint::TurfFarSingleton(inner) => inner.check(line),
+            ContinuousRangeHint::TurfPair(inner) => inner.check(line),
+            ContinuousRangeHint::TurfSingleton(inner) => inner.check(line),
+        }
+    }
+    fn apply(&self, line: &mut Line) {
+        match self {
+            ContinuousRangeHint::Unreachable(inner) => inner.apply(line),
+            ContinuousRangeHint::Kernel(inner) => inner.apply(line),
+            ContinuousRangeHint::Termination(inner) => inner.apply(line),
+            ContinuousRangeHint::TurfNearSingleton(inner) => inner.apply(line),
+            ContinuousRangeHint::TurfFarSingleton(inner) => inner.apply(line),
+            ContinuousRangeHint::TurfPair(inner) => inner.apply(line),
+            ContinuousRangeHint::TurfSingleton(inner) => inner.apply(line),
+        }
+    }
+}
+
 pub struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {
-    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<LineHint>> {
-        let mut hints: Vec<Box<LineHint>> = vec![];
+    type Hint = ContinuousRangeHint;
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<Self::Hint>> {
+        let mut hints: Vec<Box<Self::Hint>> = vec![];
         //println!("CLUE  {:?}", clue);
 
         let range_starts = clue.range_starts(line);
@@ -186,7 +223,7 @@ impl LinePass for ContinuousRangePass {
             reachable_end: range_ends[0],
         };
         if unreachable.check(line) {
-            hints.push(Box::new(unreachable));
+            hints.push(Box::new(ContinuousRangeHint::Unreachable(unreachable)));
         }
 
         let len = line.len();
@@ -223,7 +260,7 @@ impl LinePass for ContinuousRangePass {
                     kernel_end,
                 };
                 if kernel.check(line) {
-                    hints.push(Box::new(kernel));
+                    hints.push(Box::new(ContinuousRangeHint::Kernel(kernel)));
                 }
 
                 if kernel_start == range_start && kernel_end == range_end {
@@ -232,7 +269,7 @@ impl LinePass for ContinuousRangePass {
                         range_end,
                     };
                     if termination.check(line) {
-                        hints.push(Box::new(termination));
+                        hints.push(Box::new(ContinuousRangeHint::Termination(termination)));
                     }
                     continue;
                 }
@@ -246,7 +283,9 @@ impl LinePass for ContinuousRangePass {
                         turf_end,
                     };
                     if turf_near_singleton.check(line) {
-                        hints.push(Box::new(turf_near_singleton));
+                        hints.push(Box::new(ContinuousRangeHint::TurfNearSingleton(
+                            turf_near_singleton,
+                        )));
                     }
                 }
                 if let Some(found_end) = (kernel_end..turf_end).rev().find(|x| line.is_filled(*x)) {
@@ -257,7 +296,9 @@ impl LinePass for ContinuousRangePass {
                         found_end,
                     };
                     if turf_far_singleton.check(line) {
-                        hints.push(Box::new(turf_far_singleton));
+                        hints.push(Box::new(ContinuousRangeHint::TurfFarSingleton(
+                            turf_far_singleton,
+                        )));
                     }
                 }
             } else if let Some(found_start) = (turf_start..turf_end).find(|x| line.is_filled(*x)) {
@@ -275,7 +316,7 @@ impl LinePass for ContinuousRangePass {
                         turf_end,
                     };
                     if turf_pair.check(line) {
-                        hints.push(Box::new(turf_pair));
+                        hints.push(Box::new(ContinuousRangeHint::TurfPair(turf_pair)));
                     }
                 } else {
                     let turf_singleton = TurfSingleton {
@@ -285,7 +326,7 @@ impl LinePass for ContinuousRangePass {
                         turf_end,
                     };
                     if turf_singleton.check(line) {
-                        hints.push(Box::new(turf_singleton));
+                        hints.push(Box::new(ContinuousRangeHint::TurfSingleton(turf_singleton)));
                     }
                 }
             }

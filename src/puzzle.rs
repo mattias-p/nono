@@ -19,23 +19,24 @@ enum Orientation {
 }
 
 #[derive(Debug)]
-pub struct Hint {
+pub struct Hint<H: LineHint> {
     orientation: Orientation,
     line: usize,
-    line_hint: Box<LineHint>,
+    line_hint: Box<H>,
 }
 
 pub trait LinePass {
-    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<LineHint>>;
+    type Hint: LineHint;
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<Self::Hint>>;
 }
 
-pub trait LinePassExt {
-    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint>;
-    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint>;
+pub trait LinePassExt<H: LineHint> {
+    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>>;
+    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>>;
 }
 
-impl<T: LinePass> LinePassExt for T {
-    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint> {
+impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
+    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
         let mut hints = vec![];
         for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
             let mut line = HorzLine {
@@ -54,7 +55,7 @@ impl<T: LinePass> LinePassExt for T {
         }
         hints
     }
-    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint> {
+    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
         let mut hints = vec![];
         for (x, clue) in puzzle.vert_clues.0.iter().enumerate() {
             let mut line = VertLine {

@@ -3,7 +3,7 @@ use puzzle::LineHint;
 use puzzle::LinePass;
 
 #[derive(Debug)]
-struct CrowdedClue {
+pub struct CrowdedClue {
     kernel_start: usize,
     kernel_end: usize,
 }
@@ -20,8 +20,9 @@ impl LineHint for CrowdedClue {
 pub struct CrowdedCluePass;
 
 impl LinePass for CrowdedCluePass {
-    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<LineHint>> {
-        let mut hints: Vec<Box<LineHint>> = vec![];
+    type Hint = CrowdedClue;
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<Self::Hint>> {
+        let mut hints: Vec<Box<Self::Hint>> = vec![];
         let sum: usize = clue.iter().sum();
         let freedom: usize = line.len() - (sum + clue.len() - 1);
         let mut x0 = 0;
