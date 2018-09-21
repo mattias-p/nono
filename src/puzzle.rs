@@ -335,6 +335,8 @@ impl Puzzle {
             })
         }
     }
+
+    #[allow(dead_code)]
     pub fn into_ast_without_grid(self) -> parser::Puzzle {
         parser::Puzzle {
             horz_clues: self.horz_clues,
@@ -342,6 +344,7 @@ impl Puzzle {
             grid: None,
         }
     }
+
     pub fn into_ast(self) -> parser::Puzzle {
         let h = self.horz_clues.0.len();
         let w = self.vert_clues.0.len();
