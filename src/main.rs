@@ -30,37 +30,45 @@ fn main() {
             .unwrap();
         match puzzle::Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
+                let mut pass_counter = 0;
+
                 let hints = CrowdedCluePass.apply_horz(&mut puzzle);
-                //println!("\nAfter crowded clue horz:\n{}", puzzle);
+                pass_counter += 1;
+                println!("\nCrowded clue horz ({}):", pass_counter);
                 for hint in hints {
                     println!("{:?}", hint);
                 }
+                println!("{}", puzzle);
 
                 let hints = CrowdedCluePass.apply_vert(&mut puzzle);
-                //println!("\nAfter crowded clue vert:\n{}", puzzle);
+                pass_counter += 1;
+                println!("\nCrowded clue vert ({}):", pass_counter);
                 for hint in hints {
                     println!("{:?}", hint);
                 }
+                println!("{}", puzzle);
 
-                let mut pass_counter = 1;
                 let mut is_dirty = true;
                 while is_dirty {
                     is_dirty = false;
 
                     let hints = ContinuousRangePass.apply_horz(&mut puzzle);
                     is_dirty = is_dirty || !hints.is_empty();
-                    //println!("\nAfter continuous range horz:\n{}", puzzle);
+                    pass_counter += 1;
+                    println!("\nContinuous range horz ({}):", pass_counter);
                     for hint in hints {
                         println!("{:?}", hint);
                     }
+                    println!("{}", puzzle);
 
                     let hints = ContinuousRangePass.apply_vert(&mut puzzle);
                     is_dirty = is_dirty || !hints.is_empty();
+                    pass_counter += 1;
+                    println!("\nContinuous range vert ({}):", pass_counter);
                     for hint in hints {
                         println!("{:?}", hint);
                     }
-                    //println!("\nAfter continuous range vert:\n{}", puzzle);
-                    pass_counter += 1;
+                    println!("{}", puzzle);
                 }
                 println!("Number of passes: {}", pass_counter - 1);
                 println!("{}", &puzzle);
