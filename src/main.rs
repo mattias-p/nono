@@ -17,7 +17,31 @@ use parser::NonoParser;
 use parser::Rule;
 use pass::ContinuousRangePass;
 use pass::CrowdedCluePass;
+use puzzle::LinePass;
 use puzzle::LinePassExt;
+use puzzle::Puzzle;
+
+fn horz<T: LinePass>(pass: &T, puzzle: &mut Puzzle, pass_num: usize) -> bool {
+    let hints = pass.apply_horz(puzzle);
+    let is_dirty = !hints.is_empty();
+    println!("\n{:?} horz ({}):", pass, pass_num);
+    for hint in hints {
+        println!("{:?}", hint);
+    }
+    println!("{}", puzzle);
+    is_dirty
+}
+
+fn vert<T: LinePass>(pass: &T, puzzle: &mut Puzzle, pass_num: usize) -> bool {
+    let hints = pass.apply_vert(puzzle);
+    let is_dirty = !hints.is_empty();
+    println!("\n{:?} vert ({}):", pass, pass_num);
+    for hint in hints {
+        println!("{:?}", hint);
+    }
+    println!("{}", puzzle);
+    is_dirty
+}
 
 fn main() {
     let stdin = io::stdin();
@@ -32,46 +56,26 @@ fn main() {
             Ok(mut puzzle) => {
                 let mut pass_counter = 0;
 
-                let hints = CrowdedCluePass.apply_horz(&mut puzzle);
                 pass_counter += 1;
-                println!("\nCrowded clue horz ({}):", pass_counter);
-                for hint in hints {
-                    println!("{:?}", hint);
-                }
-                println!("{}", puzzle);
+                horz(&CrowdedCluePass, &mut puzzle, pass_counter);
 
-                let hints = CrowdedCluePass.apply_vert(&mut puzzle);
                 pass_counter += 1;
-                println!("\nCrowded clue vert ({}):", pass_counter);
-                for hint in hints {
-                    println!("{:?}", hint);
-                }
-                println!("{}", puzzle);
+                vert(&CrowdedCluePass, &mut puzzle, pass_counter);
 
                 let mut is_dirty = true;
                 while is_dirty {
                     is_dirty = false;
 
-                    let hints = ContinuousRangePass.apply_horz(&mut puzzle);
-                    is_dirty = is_dirty || !hints.is_empty();
                     pass_counter += 1;
-                    println!("\nContinuous range horz ({}):", pass_counter);
-                    for hint in hints {
-                        println!("{:?}", hint);
+                    if horz(&ContinuousRangePass, &mut puzzle, pass_counter) {
+                        is_dirty = true;
                     }
-                    println!("{}", puzzle);
 
-                    let hints = ContinuousRangePass.apply_vert(&mut puzzle);
-                    is_dirty = is_dirty || !hints.is_empty();
                     pass_counter += 1;
-                    println!("\nContinuous range vert ({}):", pass_counter);
-                    for hint in hints {
-                        println!("{:?}", hint);
+                    if vert(&ContinuousRangePass, &mut puzzle, pass_counter) {
+                        is_dirty = true;
                     }
-                    println!("{}", puzzle);
                 }
-                println!("Number of passes: {}", pass_counter - 1);
-                println!("{}", &puzzle);
                 println!("{}", puzzle.into_ast());
             }
             Err(e) => panic!("{}", e),

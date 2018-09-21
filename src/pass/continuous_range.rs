@@ -206,6 +206,7 @@ impl LineHint for ContinuousRangeHint {
     }
 }
 
+#[derive(Debug)]
 pub struct ContinuousRangePass;
 
 impl LinePass for ContinuousRangePass {

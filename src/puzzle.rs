@@ -25,7 +25,7 @@ pub struct Hint<H: LineHint> {
     line_hint: Box<H>,
 }
 
-pub trait LinePass {
+pub trait LinePass: fmt::Debug {
     type Hint: LineHint;
     fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<Self::Hint>>;
 }

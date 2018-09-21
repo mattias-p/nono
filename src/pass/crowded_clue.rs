@@ -17,6 +17,7 @@ impl LineHint for CrowdedClue {
     }
 }
 
+#[derive(Debug)]
 pub struct CrowdedCluePass;
 
 impl LinePass for CrowdedCluePass {
