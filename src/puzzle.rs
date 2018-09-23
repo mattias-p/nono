@@ -125,21 +125,21 @@ pub trait Line {
         false
     }
 
-    fn bump_start(&self, mut start: usize, number: usize) -> usize {
-        //println!("  starts start {}", start);
-        //println!("  starts number {}", number);
+    fn bump_start(&self, start: usize, number: usize) -> usize {
+        let mut start = if start > 0 && self.is_filled(start - 1) {
+            start + 1
+        } else {
+            start
+        };
         let mut focus = start;
+
         while focus < (start + number).min(self.len()) {
             if self.is_crossed(focus) {
-                // pushing cross
-                //println!("  starts pushed by cross at {}", focus);
                 start = focus + 1;
             }
             focus += 1;
         }
         while focus < self.len() && self.is_filled(focus) {
-            // pulling fill
-            //println!("  starts pulled by fill at {}", focus);
             focus += 1;
         }
 
@@ -225,6 +225,17 @@ struct Grid {
 }
 
 impl Grid {
+    fn new(width: usize, height: usize) -> Self {
+        Grid {
+            width,
+            height,
+            filled: FixedBitSet::with_capacity(width * height),
+            crossed: FixedBitSet::with_capacity(width * height),
+        }
+    }
+    fn horz_mut(&mut self, y: usize) -> HorzLine {
+        HorzLine { grid: self, y }
+    }
     fn index(&self, x: usize, y: usize) -> usize {
         assert!(x < self.width);
         assert!(y < self.height);
@@ -409,5 +420,47 @@ impl fmt::Display for Puzzle {
             write!(f, "\n")?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bump_start_empty() {
+        let mut grid = Grid::new(10, 1);
+        let line = grid.horz_mut(0);
+        assert_eq!(line.bump_start(0, 3), 0);
+    }
+
+    #[test]
+    fn bump_start_one_filled() {
+        let mut grid = Grid::new(10, 1);
+        let mut line = grid.horz_mut(0);
+        line.fill(4);
+        assert_eq!(line.bump_start(0, 3), 0);
+        assert_eq!(line.bump_start(1, 3), 2);
+        assert_eq!(line.bump_start(2, 3), 2);
+        assert_eq!(line.bump_start(3, 3), 3);
+        assert_eq!(line.bump_start(4, 3), 4);
+        assert_eq!(line.bump_start(5, 3), 6);
+        assert_eq!(line.bump_start(6, 3), 6);
+        assert_eq!(line.bump_start(7, 3), 7);
+    }
+
+    #[test]
+    fn bump_start_one_crossed() {
+        let mut grid = Grid::new(10, 1);
+        let mut line = grid.horz_mut(0);
+        line.cross(4);
+        assert_eq!(line.bump_start(0, 3), 0);
+        assert_eq!(line.bump_start(1, 3), 1);
+        assert_eq!(line.bump_start(2, 3), 5);
+        assert_eq!(line.bump_start(3, 3), 5);
+        assert_eq!(line.bump_start(4, 3), 5);
+        assert_eq!(line.bump_start(5, 3), 5);
+        assert_eq!(line.bump_start(6, 3), 6);
+        assert_eq!(line.bump_start(7, 3), 7);
     }
 }
