@@ -19,23 +19,18 @@ use pass::ContinuousRangePass;
 use pass::CrowdedCluePass;
 use puzzle::LinePass;
 use puzzle::LinePassExt;
+use puzzle::Orientation;
 use puzzle::Puzzle;
 
-fn horz<T: LinePass>(pass: &T, puzzle: &mut Puzzle, pass_num: usize) -> bool {
-    let hints = pass.apply_horz(puzzle);
+fn apply<T: LinePass>(
+    pass: &T,
+    orientation: &Orientation,
+    puzzle: &mut Puzzle,
+    pass_num: usize,
+) -> bool {
+    let hints = pass.apply(orientation, puzzle);
     let is_dirty = !hints.is_empty();
-    println!("\n{:?} horz ({}):", pass, pass_num);
-    for hint in hints {
-        println!("{:?}", hint);
-    }
-    println!("{}", puzzle);
-    is_dirty
-}
-
-fn vert<T: LinePass>(pass: &T, puzzle: &mut Puzzle, pass_num: usize) -> bool {
-    let hints = pass.apply_vert(puzzle);
-    let is_dirty = !hints.is_empty();
-    println!("\n{:?} vert ({}):", pass, pass_num);
+    println!("\n{:?} {:?} ({}):", pass, orientation, pass_num);
     for hint in hints {
         println!("{:?}", hint);
     }
@@ -56,24 +51,25 @@ fn main() {
             Ok(mut puzzle) => {
                 let mut pass_counter = 0;
 
-                pass_counter += 1;
-                horz(&CrowdedCluePass, &mut puzzle, pass_counter);
-
-                pass_counter += 1;
-                vert(&CrowdedCluePass, &mut puzzle, pass_counter);
+                for orientation in Orientation::iter() {
+                    pass_counter += 1;
+                    apply(&CrowdedCluePass, &orientation, &mut puzzle, pass_counter);
+                }
 
                 let mut is_dirty = true;
                 while is_dirty {
                     is_dirty = false;
 
-                    pass_counter += 1;
-                    if horz(&ContinuousRangePass, &mut puzzle, pass_counter) {
-                        is_dirty = true;
-                    }
-
-                    pass_counter += 1;
-                    if vert(&ContinuousRangePass, &mut puzzle, pass_counter) {
-                        is_dirty = true;
+                    for orientation in Orientation::iter() {
+                        pass_counter += 1;
+                        if apply(
+                            &ContinuousRangePass,
+                            &orientation,
+                            &mut puzzle,
+                            pass_counter,
+                        ) {
+                            is_dirty = true;
+                        }
                     }
                 }
                 println!("{}", puzzle.into_ast());

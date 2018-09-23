@@ -13,9 +13,15 @@ pub trait LineHint: fmt::Debug {
 }
 
 #[derive(Debug)]
-enum Orientation {
+pub enum Orientation {
     Horz,
     Vert,
+}
+
+impl Orientation {
+    pub fn iter() -> impl IntoIterator<Item = Orientation> {
+        vec![Orientation::Horz, Orientation::Vert].into_iter()
+    }
 }
 
 #[derive(Debug)]
@@ -33,6 +39,12 @@ pub trait LinePass: fmt::Debug {
 pub trait LinePassExt<H: LineHint> {
     fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>>;
     fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>>;
+    fn apply(&self, orientation: &Orientation, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
+        match orientation {
+            Orientation::Horz => self.apply_horz(puzzle),
+            Orientation::Vert => self.apply_vert(puzzle),
+        }
+    }
 }
 
 impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
