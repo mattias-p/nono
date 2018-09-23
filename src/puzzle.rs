@@ -126,21 +126,29 @@ pub trait Line {
     }
 
     fn bump_start(&self, start: usize, number: usize) -> usize {
+        //println!("BUMP START {} {}", start, number);
+        //if start > 0 { println!("  check filled {}", start - 1); }
         let mut start = if start > 0 && self.is_filled(start - 1) {
+            //println!("  pushed");
             start + 1
         } else {
             start
         };
         let mut focus = start;
 
-        while focus < (start + number).min(self.len()) {
-            if self.is_crossed(focus) {
+        while focus < (start + number).min(self.len() + 1) {
+            //println!("  check crossed {}", focus);
+            if focus < self.len() && self.is_crossed(focus) {
+                //println!("  pushed");
                 start = focus + 1;
             }
             focus += 1;
         }
+        //println!("  check filled {}", focus);
         while focus < self.len() && self.is_filled(focus) {
             focus += 1;
+            //println!("  pulled");
+            //println!("  check filled {}", focus);
         }
 
         focus - number
@@ -462,5 +470,17 @@ mod tests {
         assert_eq!(line.bump_start(5, 3), 5);
         assert_eq!(line.bump_start(6, 3), 6);
         assert_eq!(line.bump_start(7, 3), 7);
+    }
+
+    #[test]
+    fn bump_start_two_filled() {
+        let mut grid = Grid::new(4, 1);
+        let mut line = grid.horz_mut(0);
+        line.fill(0);
+        line.fill(2);
+        assert_eq!(line.bump_start(0, 1), 0);
+        assert_eq!(line.bump_start(1, 1), 2);
+        assert_eq!(line.bump_start(2, 1), 2);
+        assert_eq!(line.bump_start(3, 1), 4);
     }
 }
