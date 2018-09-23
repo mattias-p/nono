@@ -171,7 +171,7 @@ pub trait Line {
     }
 }
 
-struct HorzLine<'a> {
+pub struct HorzLine<'a> {
     grid: &'a mut Grid,
     y: usize,
 }
@@ -194,7 +194,7 @@ impl<'a> Line for HorzLine<'a> {
     }
 }
 
-struct VertLine<'a> {
+pub struct VertLine<'a> {
     grid: &'a mut Grid,
     x: usize,
 }
@@ -217,7 +217,7 @@ impl<'a> Line for VertLine<'a> {
     }
 }
 
-struct Grid {
+pub struct Grid {
     width: usize,
     height: usize,
     filled: FixedBitSet,
@@ -225,7 +225,7 @@ struct Grid {
 }
 
 impl Grid {
-    fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Grid {
             width,
             height,
@@ -233,7 +233,7 @@ impl Grid {
             crossed: FixedBitSet::with_capacity(width * height),
         }
     }
-    fn horz_mut(&mut self, y: usize) -> HorzLine {
+    pub fn horz_mut(&mut self, y: usize) -> HorzLine {
         HorzLine { grid: self, y }
     }
     fn index(&self, x: usize, y: usize) -> usize {
