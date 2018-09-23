@@ -126,7 +126,7 @@ pub trait Line {
     }
 
     fn bump_start(&self, start: usize, number: usize) -> usize {
-        //println!("BUMP START {} {}", start, number);
+        println!("BUMP START {} {}", start, number);
         //if start > 0 { println!("  check filled {}", start - 1); }
         let mut start = if start > 0 && self.is_filled(start - 1) {
             //println!("  pushed");
@@ -136,7 +136,7 @@ pub trait Line {
         };
         let mut focus = start;
 
-        while focus < (start + number).min(self.len() + 1) {
+        while focus < start + number {
             //println!("  check crossed {}", focus);
             if focus < self.len() && self.is_crossed(focus) {
                 //println!("  pushed");
@@ -482,5 +482,20 @@ mod tests {
         assert_eq!(line.bump_start(1, 1), 2);
         assert_eq!(line.bump_start(2, 1), 2);
         assert_eq!(line.bump_start(3, 1), 4);
+    }
+
+    #[test]
+    fn bump_start_number_two() {
+        use puzzle::Grid;
+
+        let mut grid = Grid::new(6, 1);
+        let mut line = grid.horz_mut(0);
+        line.fill(0);
+        line.cross(2);
+        line.fill(4);
+        line.cross(5);
+        assert_eq!(line.bump_start(2, 2), 3);
+        assert_eq!(line.bump_start(3, 2), 3);
+        assert_eq!(line.bump_start(4, 2), 6);
     }
 }
