@@ -442,14 +442,62 @@ impl Puzzle {
     }
 }
 
-impl fmt::Display for Puzzle {
+#[derive(Debug)]
+pub enum Theme {
+    Ascii,
+    Unicode,
+}
+
+impl Theme {
+    pub fn crossed(&self) -> char {
+        match self {
+            Theme::Ascii => '⨉',
+            Theme::Unicode => '.',
+        }
+    }
+
+    pub fn filled(&self) -> char {
+        match self {
+            Theme::Ascii => '#',
+            Theme::Unicode => '■',
+        }
+    }
+
+    pub fn impossible(&self) -> char {
+        match self {
+            Theme::Ascii => '!',
+            Theme::Unicode => '!',
+        }
+    }
+
+    pub fn undecided(&self) -> char {
+        match self {
+            Theme::Ascii => ' ',
+            Theme::Unicode => '·',
+        }
+    }
+
+    pub fn view<'a>(&'a self, puzzle: &'a Puzzle) -> View<'a> {
+        View {
+            puzzle,
+            theme: self,
+        }
+    }
+}
+
+pub struct View<'a> {
+    puzzle: &'a Puzzle,
+    theme: &'a Theme,
+}
+
+impl<'a> fmt::Display for View<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let w = self.vert_clues.0.len();
-        let max_vert_clue_len = self.max_vert_clue_len();
-        let max_horz_clue_len = self.max_horz_clue_len();
+        let w = self.puzzle.vert_clues.0.len();
+        let max_vert_clue_len = self.puzzle.max_vert_clue_len();
+        let max_horz_clue_len = self.puzzle.max_horz_clue_len();
         for i in 0..max_vert_clue_len {
             write!(f, "{: >width$}", "", width = 3 * max_horz_clue_len)?;
-            for clue in &self.vert_clues.0 {
+            for clue in &self.puzzle.vert_clues.0 {
                 if clue.0.len() > max_vert_clue_len - i - 1 {
                     write!(f, "{: >2}", clue.0[clue.0.len() - (max_vert_clue_len - i)])?;
                 } else {
@@ -458,7 +506,7 @@ impl fmt::Display for Puzzle {
             }
             write!(f, "\n")?;
         }
-        for (y, clue) in self.horz_clues.0.iter().enumerate() {
+        for (y, clue) in self.puzzle.horz_clues.0.iter().enumerate() {
             for i in 0..max_horz_clue_len {
                 if clue.0.len() > max_horz_clue_len - i - 1 {
                     write!(f, " {: >2}", clue.0[clue.0.len() - (max_horz_clue_len - i)])?;
@@ -467,11 +515,11 @@ impl fmt::Display for Puzzle {
                 }
             }
             for x in 0..w {
-                let ch = match self.grid.get(x, y) {
-                    Cell::Crossed => '⨉',
-                    Cell::Filled => '■',
-                    Cell::Impossible => '!',
-                    Cell::Undecided => '·',
+                let ch = match self.puzzle.grid.get(x, y) {
+                    Cell::Crossed => self.theme.crossed(),
+                    Cell::Filled => self.theme.filled(),
+                    Cell::Impossible => self.theme.impossible(),
+                    Cell::Undecided => self.theme.undecided(),
                 };
                 write!(f, " {}", ch)?;
             }

@@ -22,11 +22,13 @@ use puzzle::LinePass;
 use puzzle::LinePassExt;
 use puzzle::Orientation;
 use puzzle::Puzzle;
+use puzzle::Theme;
 
 fn apply<T: LinePass>(
+    puzzle: &mut Puzzle,
     pass: &T,
     orientation: &Orientation,
-    puzzle: &mut Puzzle,
+    theme: &Theme,
     pass_num: usize,
 ) -> bool {
     let hints = pass.apply(orientation, puzzle);
@@ -35,11 +37,13 @@ fn apply<T: LinePass>(
     for hint in hints {
         println!("{:?}", hint);
     }
-    println!("{}", puzzle);
+    println!("{}", theme.view(puzzle));
     is_dirty
 }
 
 fn main() {
+    let theme = Theme::unicode();
+
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         let line = line.unwrap();
@@ -54,7 +58,13 @@ fn main() {
 
                 for orientation in Orientation::iter() {
                     pass_counter += 1;
-                    apply(&CrowdedCluePass, &orientation, &mut puzzle, pass_counter);
+                    apply(
+                        &mut puzzle,
+                        &CrowdedCluePass,
+                        &orientation,
+                        &theme,
+                        pass_counter,
+                    );
                 }
 
                 let mut is_dirty = true;
@@ -64,17 +74,22 @@ fn main() {
                     for orientation in Orientation::iter() {
                         pass_counter += 1;
                         if apply(
+                            &mut puzzle,
                             &ContinuousRangePass,
                             &orientation,
-                            &mut puzzle,
+                            &theme,
                             pass_counter,
                         ) {
                             is_dirty = true;
                         }
 
-                        if !is_dirty
-                            && apply(&DiscreteRangePass, &orientation, &mut puzzle, pass_counter)
-                        {
+                        if !is_dirty && apply(
+                            &mut puzzle,
+                            &DiscreteRangePass,
+                            &orientation,
+                            &theme,
+                            pass_counter,
+                        ) {
                             is_dirty = true;
                         }
                     }
