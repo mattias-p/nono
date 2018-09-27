@@ -455,8 +455,8 @@ pub enum Theme {
 impl Theme {
     pub fn crossed(&self) -> char {
         match self {
-            Theme::Ascii => '⨉',
-            Theme::Unicode => '.',
+            Theme::Ascii => '.',
+            Theme::Unicode => '⨉',
             Theme::Brief => 'E',
         }
     }
