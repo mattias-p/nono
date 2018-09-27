@@ -340,6 +340,14 @@ pub struct Puzzle<'a> {
 }
 
 impl<'a> Puzzle<'a> {
+    pub fn is_complete(&self) -> bool {
+        for i in 0..self.grid.filled.len() {
+            if !self.grid.filled.contains(i) && !self.grid.crossed.contains(i) {
+                return false;
+            }
+        }
+        true
+    }
     fn max_horz_clue_len(&self) -> usize {
         self.horz_clues
             .0

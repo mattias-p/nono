@@ -81,13 +81,21 @@ fn main() {
                         &opt.theme,
                         pass_counter,
                     );
+
+                    if puzzle.is_complete() {
+                        break;
+                    }
                 }
 
                 let mut is_dirty = true;
-                while is_dirty {
+                'solver: while is_dirty {
                     is_dirty = false;
 
                     for orientation in Orientation::iter() {
+                        if puzzle.is_complete() {
+                            break 'solver;
+                        }
+
                         pass_counter += 1;
                         if apply(
                             &mut puzzle,
@@ -99,14 +107,21 @@ fn main() {
                             is_dirty = true;
                         }
 
-                        if !is_dirty && apply(
-                            &mut puzzle,
-                            &DiscreteRangePass,
-                            &orientation,
-                            &opt.theme,
-                            pass_counter,
-                        ) {
-                            is_dirty = true;
+                        if puzzle.is_complete() {
+                            break 'solver;
+                        }
+
+                        if !is_dirty {
+                            pass_counter += 1;
+                            if apply(
+                                &mut puzzle,
+                                &DiscreteRangePass,
+                                &orientation,
+                                &opt.theme,
+                                pass_counter,
+                            ) {
+                                is_dirty = true;
+                            }
                         }
                     }
                 }
