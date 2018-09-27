@@ -21,9 +21,11 @@ pub enum Orientation {
     Vert,
 }
 
+static ORIENTATIONS: [Orientation; 2] = [Orientation::Horz, Orientation::Vert];
+
 impl Orientation {
-    pub fn iter() -> impl IntoIterator<Item = Orientation> {
-        vec![Orientation::Horz, Orientation::Vert].into_iter()
+    pub fn all() -> &'static [Orientation; 2] {
+        &ORIENTATIONS
     }
 }
 

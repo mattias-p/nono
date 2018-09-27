@@ -16,8 +16,11 @@ use std::io::BufRead;
 
 use parser::NonoParser;
 use parser::Rule;
+use pass::ContinuousRangeHint;
 use pass::ContinuousRangePass;
+use pass::CrowdedClue;
 use pass::CrowdedCluePass;
+use pass::DiscreteRangeHint;
 use pass::DiscreteRangePass;
 use pest::Parser;
 use puzzle::LinePass;
@@ -57,6 +60,62 @@ fn apply<T: LinePass>(
     is_dirty
 }
 
+#[derive(Debug)]
+enum Hint {
+    CrowdedClue(CrowdedClue),
+    ContinuousRange(ContinuousRangeHint),
+    DiscreteRange(DiscreteRangeHint),
+}
+
+use puzzle::Line;
+
+impl puzzle::LineHint for Hint {
+    fn check(&self, line: &Line) -> bool {
+        match self {
+            Hint::CrowdedClue(inner) => inner.check(line),
+            Hint::ContinuousRange(inner) => inner.check(line),
+            Hint::DiscreteRange(inner) => inner.check(line),
+        }
+    }
+    fn apply(&self, line: &mut Line) {
+        match self {
+            Hint::CrowdedClue(inner) => inner.apply(line),
+            Hint::ContinuousRange(inner) => inner.apply(line),
+            Hint::DiscreteRange(inner) => inner.apply(line),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Pass {
+    CrowdedClue(CrowdedCluePass),
+    ContinuousRange(ContinuousRangePass),
+    DiscreteRange(DiscreteRangePass),
+}
+
+impl puzzle::LinePass for Pass {
+    type Hint = Hint;
+    fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<Self::Hint>> {
+        match self {
+            Pass::CrowdedClue(inner) => inner
+                .run(clue, line)
+                .into_iter()
+                .map(|hint| Box::new(Hint::CrowdedClue(*hint)))
+                .collect(),
+            Pass::ContinuousRange(inner) => inner
+                .run(clue, line)
+                .into_iter()
+                .map(|hint| Box::new(Hint::ContinuousRange(*hint)))
+                .collect(),
+            Pass::DiscreteRange(inner) => inner
+                .run(clue, line)
+                .into_iter()
+                .map(|hint| Box::new(Hint::DiscreteRange(*hint)))
+                .collect(),
+        }
+    }
+}
+
 fn main() {
     let opt = Opt::from_args();
 
@@ -72,56 +131,39 @@ fn main() {
             Ok(mut puzzle) => {
                 let mut pass_counter = 0;
 
-                for orientation in Orientation::iter() {
+                let passes: [Pass; 3] = [
+                    Pass::CrowdedClue(CrowdedCluePass),
+                    Pass::ContinuousRange(ContinuousRangePass),
+                    Pass::DiscreteRange(DiscreteRangePass),
+                ];
+                let orientations = Orientation::all();
+
+                let mut cur_p = 0;
+                let mut cur_o = 0;
+                let mut fail_count = 0;
+                'outer: while let Some(pass) = passes.get(cur_p) {
+                    let orientation = &orientations[cur_o];
                     pass_counter += 1;
-                    apply(
-                        &mut puzzle,
-                        &CrowdedCluePass,
-                        &orientation,
-                        &opt.theme,
-                        pass_counter,
-                    );
-
-                    if puzzle.is_complete() {
-                        break;
+                    if apply(&mut puzzle, pass, &orientation, &opt.theme, pass_counter) {
+                        if puzzle.is_complete() {
+                            break 'outer;
+                        }
+                        fail_count = 0;
+                        if cur_p > 0 {
+                            cur_p = 1;
+                        }
+                    } else {
+                        fail_count += 1;
                     }
-                }
 
-                let mut is_dirty = true;
-                'solver: while is_dirty {
-                    is_dirty = false;
-
-                    for orientation in Orientation::iter() {
-                        if puzzle.is_complete() {
-                            break 'solver;
-                        }
-
-                        pass_counter += 1;
-                        if apply(
-                            &mut puzzle,
-                            &ContinuousRangePass,
-                            &orientation,
-                            &opt.theme,
-                            pass_counter,
-                        ) {
-                            is_dirty = true;
-                        }
-
-                        if puzzle.is_complete() {
-                            break 'solver;
-                        }
-
-                        if !is_dirty {
-                            pass_counter += 1;
-                            if apply(
-                                &mut puzzle,
-                                &DiscreteRangePass,
-                                &orientation,
-                                &opt.theme,
-                                pass_counter,
-                            ) {
-                                is_dirty = true;
-                            }
+                    cur_o = 1 - cur_o;
+                    if fail_count >= 2 {
+                        cur_p += 1;
+                        fail_count = 0;
+                    }
+                    if let Pass::CrowdedClue(_) = pass {
+                        if cur_o == 0 {
+                            cur_p = 1;
                         }
                     }
                 }
