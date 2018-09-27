@@ -1,11 +1,12 @@
 use pest::iterators::Pair;
+use std::borrow::Cow;
 use std::fmt;
 
 #[derive(Parser)]
 #[grammar = "nono.pest"]
 pub struct NonoParser;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Clue(pub Vec<usize>);
 
 impl<'a> From<Pair<'a, Rule>> for Clue {
@@ -31,7 +32,7 @@ impl fmt::Display for Clue {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ClueList(pub Vec<Clue>);
 
 impl<'a> From<Pair<'a, Rule>> for ClueList {
@@ -125,18 +126,18 @@ impl fmt::Display for Grid {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Puzzle {
-    pub vert_clues: ClueList,
-    pub horz_clues: ClueList,
+pub struct Puzzle<'a> {
+    pub vert_clues: Cow<'a, ClueList>,
+    pub horz_clues: Cow<'a, ClueList>,
     pub grid: Option<Grid>,
 }
 
-impl<'a> From<Pair<'a, Rule>> for Puzzle {
+impl<'a> From<Pair<'a, Rule>> for Puzzle<'a> {
     fn from(pair: Pair<Rule>) -> Self {
         assert_eq!(pair.as_rule(), Rule::puzzle);
         let mut pairs = pair.into_inner();
-        let vert_clues = pairs.next().map(ClueList::from).unwrap();
-        let horz_clues = pairs.next().map(ClueList::from).unwrap();
+        let vert_clues = Cow::Owned(pairs.next().map(ClueList::from).unwrap());
+        let horz_clues = Cow::Owned(pairs.next().map(ClueList::from).unwrap());
         let grid = pairs.next().map(Grid::from);
         Puzzle {
             vert_clues,
@@ -146,7 +147,7 @@ impl<'a> From<Pair<'a, Rule>> for Puzzle {
     }
 }
 
-impl fmt::Display for Puzzle {
+impl<'a> fmt::Display for Puzzle<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(grid) = &self.grid {
             write!(f, "[{}|{}|{}]", self.vert_clues, self.horz_clues, grid)

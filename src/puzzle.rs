@@ -1,12 +1,14 @@
 use fixedbitset::FixedBitSet;
-use parser::Cell;
-use parser::ClueList;
-use parser::GridLine;
+use std::borrow::Borrow;
+use std::borrow::Cow;
 use std::fmt;
 use std::ops::Range;
 use std::str::FromStr;
 
 use parser;
+use parser::Cell;
+use parser::ClueList;
+use parser::GridLine;
 
 pub trait LineHint: fmt::Debug {
     fn check(&self, line: &Line) -> bool;
@@ -331,13 +333,13 @@ impl Grid {
     }
 }
 
-pub struct Puzzle {
-    vert_clues: ClueList,
-    horz_clues: ClueList,
+pub struct Puzzle<'a> {
+    vert_clues: Cow<'a, ClueList>,
+    horz_clues: Cow<'a, ClueList>,
     grid: Grid,
 }
 
-impl Puzzle {
+impl<'a> Puzzle<'a> {
     fn max_horz_clue_len(&self) -> usize {
         self.horz_clues
             .0
@@ -354,7 +356,7 @@ impl Puzzle {
             .max()
             .unwrap()
     }
-    pub fn try_from_ast(ast: parser::Puzzle) -> Result<Puzzle, String> {
+    pub fn try_from_ast(ast: parser::Puzzle<'a>) -> Result<Puzzle<'a>, String> {
         let w = ast.vert_clues.0.len();
         let h = ast.horz_clues.0.len();
         if let Some(grid) = ast.grid {
@@ -419,7 +421,7 @@ impl Puzzle {
     }
 
     #[allow(dead_code)]
-    pub fn into_ast_without_grid(self) -> parser::Puzzle {
+    pub fn into_ast_without_grid(self) -> parser::Puzzle<'a> {
         parser::Puzzle {
             horz_clues: self.horz_clues,
             vert_clues: self.vert_clues,
@@ -427,7 +429,7 @@ impl Puzzle {
         }
     }
 
-    pub fn into_ast(self) -> parser::Puzzle {
+    pub fn into_ast(&self) -> parser::Puzzle {
         let h = self.horz_clues.0.len();
         let w = self.vert_clues.0.len();
         let mut grid_lines = Vec::with_capacity(w);
@@ -436,17 +438,18 @@ impl Puzzle {
             grid_lines.push(GridLine(cells));
         }
         parser::Puzzle {
-            horz_clues: self.horz_clues,
-            vert_clues: self.vert_clues,
+            horz_clues: Cow::Borrowed(self.horz_clues.borrow()),
+            vert_clues: Cow::Borrowed(self.vert_clues.borrow()),
             grid: Some(parser::Grid(grid_lines)),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Theme {
     Ascii,
     Unicode,
+    Brief,
 }
 
 impl Theme {
@@ -454,6 +457,7 @@ impl Theme {
         match self {
             Theme::Ascii => '⨉',
             Theme::Unicode => '.',
+            Theme::Brief => 'E',
         }
     }
 
@@ -461,6 +465,7 @@ impl Theme {
         match self {
             Theme::Ascii => '#',
             Theme::Unicode => '■',
+            Theme::Brief => 'E',
         }
     }
 
@@ -468,6 +473,7 @@ impl Theme {
         match self {
             Theme::Ascii => '!',
             Theme::Unicode => '!',
+            Theme::Brief => 'E',
         }
     }
 
@@ -475,6 +481,7 @@ impl Theme {
         match self {
             Theme::Ascii => ' ',
             Theme::Unicode => '·',
+            Theme::Brief => 'E',
         }
     }
 
@@ -490,20 +497,25 @@ impl FromStr for Theme {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "unicode" => Ok(Theme::Unicode),
             "ascii" => Ok(Theme::Ascii),
+            "unicode" => Ok(Theme::Unicode),
+            "brief" => Ok(Theme::Brief),
             _ => Err("unrecognized theme"),
         }
     }
 }
 
 pub struct View<'a> {
-    puzzle: &'a Puzzle,
+    puzzle: &'a Puzzle<'a>,
     theme: &'a Theme,
 }
 
 impl<'a> fmt::Display for View<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if *self.theme == Theme::Brief {
+            return self.puzzle.into_ast().fmt(f);
+        }
+
         let w = self.puzzle.vert_clues.0.len();
         let max_vert_clue_len = self.puzzle.max_vert_clue_len();
         let max_horz_clue_len = self.puzzle.max_horz_clue_len();

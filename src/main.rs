@@ -31,7 +31,7 @@ use structopt::StructOpt;
 #[structopt(name = "nono")]
 /// A nonogram hint dispenser
 ///
-/// Available display themes: ascii, unicode
+/// Available display themes: ascii, unicode, brief
 struct Opt {
     /// Select display theme
     #[structopt(short = "t", long = "theme", default_value = "unicode")]
@@ -47,9 +47,11 @@ fn apply<T: LinePass>(
 ) -> bool {
     let hints = pass.apply(orientation, puzzle);
     let is_dirty = !hints.is_empty();
-    println!("\n{:?} {:?} ({}):", pass, orientation, pass_num);
-    for hint in hints {
-        println!("{:?}", hint);
+    if *theme != Theme::Brief {
+        println!("\n{:?} {:?} ({}):", pass, orientation, pass_num);
+        for hint in hints {
+            println!("{:?}", hint);
+        }
     }
     println!("{}", theme.view(puzzle));
     is_dirty
@@ -108,7 +110,6 @@ fn main() {
                         }
                     }
                 }
-                println!("{}", puzzle.into_ast());
             }
             Err(e) => panic!("{}", e),
         }
