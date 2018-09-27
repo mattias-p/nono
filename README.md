@@ -16,8 +16,7 @@ See the [Rust and Cargo installation guide] for details.
 Build and locate the executable:
 
 ```sh
-cargo build
-ls target/debug/nono
+cargo build && target/debug/nono --help
 ```
 
 
@@ -26,14 +25,14 @@ ls target/debug/nono
 `nono` reads puzzles from stdin.
 
 ```sh
-./nono < examples.txt
+nono --theme=ascii < examples.txt
 ```
 
 If you don't want to run all puzzles in a file, you can use `sed` do pick out a single line.
 For example the 4th line:
 
 ```sh
-sed -n 4p examples.txt | ./nono
+sed -n 4p examples.txt | nono
 ```
 
 
