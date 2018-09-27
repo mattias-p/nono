@@ -56,7 +56,9 @@ fn apply<T: LinePass>(
             println!("{:?}", hint);
         }
     }
-    println!("{}", theme.view(puzzle));
+    if is_dirty {
+        println!("{}", theme.view(puzzle));
+    }
     is_dirty
 }
 
