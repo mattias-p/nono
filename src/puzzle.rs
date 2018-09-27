@@ -4,6 +4,7 @@ use parser::ClueList;
 use parser::GridLine;
 use std::fmt;
 use std::ops::Range;
+use std::str::FromStr;
 
 use parser;
 
@@ -481,6 +482,17 @@ impl Theme {
         View {
             puzzle,
             theme: self,
+        }
+    }
+}
+
+impl FromStr for Theme {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "unicode" => Ok(Theme::Unicode),
+            "ascii" => Ok(Theme::Ascii),
+            _ => Err("unrecognized theme"),
         }
     }
 }

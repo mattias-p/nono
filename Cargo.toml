@@ -5,6 +5,7 @@ authors = ["Mattias Päivärinta <mattias@paivarinta.se>"]
 
 [dependencies]
 fixedbitset = "0.1.9"
+itertools = "0.7.8"
 pest = "^1.0"
 pest_derive = "^1.0"
-itertools = "0.7.8"
+structopt = { version = "0.2", default-features = false }

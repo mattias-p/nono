@@ -4,12 +4,13 @@ extern crate pest_derive;
 extern crate fixedbitset;
 #[macro_use]
 extern crate itertools;
+#[macro_use]
+extern crate structopt;
 
 mod parser;
 mod pass;
 mod puzzle;
 
-use pest::Parser;
 use std::io;
 use std::io::BufRead;
 
@@ -18,11 +19,24 @@ use parser::Rule;
 use pass::ContinuousRangePass;
 use pass::CrowdedCluePass;
 use pass::DiscreteRangePass;
+use pest::Parser;
 use puzzle::LinePass;
 use puzzle::LinePassExt;
 use puzzle::Orientation;
 use puzzle::Puzzle;
 use puzzle::Theme;
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+#[structopt(name = "nono")]
+/// A nonogram hint dispenser
+///
+/// Available display themes: ascii, unicode
+struct Opt {
+    /// Select display theme
+    #[structopt(short = "t", long = "theme", default_value = "unicode")]
+    theme: Theme,
+}
 
 fn apply<T: LinePass>(
     puzzle: &mut Puzzle,
@@ -42,7 +56,7 @@ fn apply<T: LinePass>(
 }
 
 fn main() {
-    let theme = Theme::unicode();
+    let opt = Opt::from_args();
 
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
@@ -62,7 +76,7 @@ fn main() {
                         &mut puzzle,
                         &CrowdedCluePass,
                         &orientation,
-                        &theme,
+                        &opt.theme,
                         pass_counter,
                     );
                 }
@@ -77,7 +91,7 @@ fn main() {
                             &mut puzzle,
                             &ContinuousRangePass,
                             &orientation,
-                            &theme,
+                            &opt.theme,
                             pass_counter,
                         ) {
                             is_dirty = true;
@@ -87,7 +101,7 @@ fn main() {
                             &mut puzzle,
                             &DiscreteRangePass,
                             &orientation,
-                            &theme,
+                            &opt.theme,
                             pass_counter,
                         ) {
                             is_dirty = true;
