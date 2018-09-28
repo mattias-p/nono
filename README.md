@@ -1,7 +1,9 @@
 # nono
 Nonogram hint dispenser
 
-At this time it only implements very basic techniques.
+Currently `nono` is able to solve a fair number of puzzles.
+However there are still puzzles that are beyond its grasp.
+
 I made up the entire terminology around the hints by myself and there's no documentation of it.
 
 
