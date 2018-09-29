@@ -36,6 +36,25 @@ pub struct Hint<H: LineHint> {
     line_hint: Box<H>,
 }
 
+impl<H: LineHint> Hint<H> {
+    fn apply<'a>(&self, puzzle: &mut Puzzle<'a>) {
+        match self.orientation {
+            Orientation::Vert => {
+                self.line_hint.apply(&mut VertLine {
+                    grid: &mut puzzle.grid,
+                    x: self.line,
+                });
+            }
+            Orientation::Horz => {
+                self.line_hint.apply(&mut HorzLine {
+                    grid: &mut puzzle.grid,
+                    y: self.line,
+                });
+            }
+        }
+    }
+}
+
 pub trait LinePass: fmt::Debug {
     type Hint: LineHint;
     fn run(&self, clue: &[usize], line: &Line) -> Vec<Box<Self::Hint>>;
@@ -61,15 +80,18 @@ impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
                 y,
             };
             for line_hint in self.run(clue.0.as_slice(), &line) {
-                line_hint.apply(&mut line);
-                hints.push(Hint {
+                let hint = Hint {
                     orientation: Orientation::Horz,
                     line: y,
                     line_hint,
-                });
+                };
+                hints.push(hint);
             }
-            //println!("\nAfter horz line:\n{}", puzzle);
         }
+        for hint in &hints {
+            hint.apply(puzzle);
+        }
+        //println!("\nAfter horz line:\n{}", puzzle);
         hints
     }
     fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
@@ -80,15 +102,18 @@ impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
                 x,
             };
             for line_hint in self.run(clue.0.as_slice(), &line) {
-                line_hint.apply(&mut line);
-                hints.push(Hint {
+                let hint = Hint {
                     orientation: Orientation::Vert,
                     line: x,
                     line_hint,
-                });
+                };
+                hints.push(hint);
             }
-            //println!("\nAfter vert line:\n{}", puzzle);
         }
+        for hint in &hints {
+            hint.apply(puzzle);
+        }
+        //println!("\nAfter vert line:\n{}", puzzle);
         hints
     }
 }
