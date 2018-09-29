@@ -40,13 +40,13 @@ impl<H: LineHint> Hint<H> {
     fn apply<'a>(&self, puzzle: &mut Puzzle<'a>) {
         match self.orientation {
             Orientation::Vert => {
-                self.line_hint.apply(&mut VertLine {
+                self.line_hint.apply(&mut VertLineMut {
                     grid: &mut puzzle.grid,
                     x: self.line,
                 });
             }
             Orientation::Horz => {
-                self.line_hint.apply(&mut HorzLine {
+                self.line_hint.apply(&mut HorzLineMut {
                     grid: &mut puzzle.grid,
                     y: self.line,
                 });
@@ -223,7 +223,7 @@ pub trait LineMut: Line {
 }
 
 pub struct HorzLine<'a> {
-    grid: &'a mut Grid,
+    grid: &'a Grid,
     y: usize,
 }
 
@@ -242,7 +242,27 @@ impl<'a> Line for HorzLine<'a> {
     }
 }
 
-impl<'a> LineMut for HorzLine<'a> {
+pub struct HorzLineMut<'a> {
+    grid: &'a mut Grid,
+    y: usize,
+}
+
+impl<'a> Line for HorzLineMut<'a> {
+    fn get(&self, x: usize) -> Cell {
+        self.grid.get(x, self.y)
+    }
+    fn is_crossed(&self, x: usize) -> bool {
+        self.grid.is_crossed(x, self.y)
+    }
+    fn is_filled(&self, x: usize) -> bool {
+        self.grid.is_filled(x, self.y)
+    }
+    fn len(&self) -> usize {
+        self.grid.width
+    }
+}
+
+impl<'a> LineMut for HorzLineMut<'a> {
     fn cross(&mut self, x: usize) {
         self.grid.cross(x, self.y);
     }
@@ -252,7 +272,7 @@ impl<'a> LineMut for HorzLine<'a> {
 }
 
 pub struct VertLine<'a> {
-    grid: &'a mut Grid,
+    grid: &'a Grid,
     x: usize,
 }
 
@@ -270,7 +290,28 @@ impl<'a> Line for VertLine<'a> {
         self.grid.height
     }
 }
-impl<'a> LineMut for VertLine<'a> {
+
+pub struct VertLineMut<'a> {
+    grid: &'a mut Grid,
+    x: usize,
+}
+
+impl<'a> Line for VertLineMut<'a> {
+    fn get(&self, y: usize) -> Cell {
+        self.grid.get(self.x, y)
+    }
+    fn is_crossed(&self, y: usize) -> bool {
+        self.grid.is_crossed(self.x, y)
+    }
+    fn is_filled(&self, y: usize) -> bool {
+        self.grid.is_filled(self.x, y)
+    }
+    fn len(&self) -> usize {
+        self.grid.height
+    }
+}
+
+impl<'a> LineMut for VertLineMut<'a> {
     fn cross(&mut self, y: usize) {
         self.grid.cross(self.x, y);
     }
