@@ -61,14 +61,26 @@ pub trait LinePass: fmt::Debug {
 }
 
 pub trait LinePassExt<H: LineHint> {
-    fn run_horz(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
     fn run_vert(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
-    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>>;
-    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>>;
+    fn run_horz(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
     fn apply(&self, orientation: &Orientation, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
         match orientation {
-            Orientation::Horz => self.apply_horz(puzzle),
-            Orientation::Vert => self.apply_vert(puzzle),
+            Orientation::Vert => {
+                let hints = self.run_vert(puzzle);
+                for hint in &hints {
+                    hint.apply(puzzle);
+                }
+                //println!("\nAfter vert line:\n{}", puzzle);
+                hints
+            }
+            Orientation::Horz => {
+                let hints = self.run_horz(puzzle);
+                for hint in &hints {
+                    hint.apply(puzzle);
+                }
+                //println!("\nAfter horz line:\n{}", puzzle);
+                hints
+            }
         }
     }
 }
@@ -109,24 +121,6 @@ impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
                 hints.push(hint);
             }
         }
-        hints
-    }
-
-    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
-        let hints = self.run_vert(puzzle);
-        for hint in &hints {
-            hint.apply(puzzle);
-        }
-        //println!("\nAfter vert line:\n{}", puzzle);
-        hints
-    }
-
-    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
-        let hints = self.run_horz(puzzle);
-        for hint in &hints {
-            hint.apply(puzzle);
-        }
-        //println!("\nAfter horz line:\n{}", puzzle);
         hints
     }
 }
