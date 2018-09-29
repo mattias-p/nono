@@ -1,5 +1,6 @@
 use puzzle::Line;
 use puzzle::LineHint;
+use puzzle::LineMut;
 use puzzle::LinePass;
 
 #[derive(Debug)]
@@ -12,7 +13,7 @@ impl LineHint for CrowdedClue {
     fn check(&self, line: &Line) -> bool {
         line.range_contains_unfilled(self.kernel_start..self.kernel_end)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         line.fill_range(self.kernel_start..self.kernel_end);
     }
 }

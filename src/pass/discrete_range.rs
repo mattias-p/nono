@@ -3,6 +3,7 @@ use parser::Cell;
 
 use puzzle::Line;
 use puzzle::LineHint;
+use puzzle::LineMut;
 use puzzle::LinePass;
 
 #[derive(Debug, Eq)]
@@ -16,7 +17,7 @@ impl LineHint for FilledRun {
     fn check(&self, line: &Line) -> bool {
         line.range_contains_unfilled(self.start..self.end)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         line.fill_range(self.start..self.end)
     }
 }
@@ -40,7 +41,7 @@ impl LineHint for CrossedRun {
     fn check(&self, line: &Line) -> bool {
         line.range_contains_uncrossed(self.start..self.end)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         line.cross_range(self.start..self.end)
     }
 }
@@ -58,7 +59,7 @@ impl LineHint for DiscreteRangeHint {
             DiscreteRangeHint::FilledRun(inner) => inner.check(line),
         }
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         match self {
             DiscreteRangeHint::CrossedRun(inner) => inner.apply(line),
             DiscreteRangeHint::FilledRun(inner) => inner.apply(line),

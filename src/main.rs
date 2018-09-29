@@ -23,6 +23,7 @@ use pass::CrowdedCluePass;
 use pass::DiscreteRangeHint;
 use pass::DiscreteRangePass;
 use pest::Parser;
+use puzzle::LineMut;
 use puzzle::LinePass;
 use puzzle::LinePassExt;
 use puzzle::Orientation;
@@ -79,7 +80,7 @@ impl puzzle::LineHint for Hint {
             Hint::DiscreteRange(inner) => inner.check(line),
         }
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         match self {
             Hint::CrowdedClue(inner) => inner.apply(line),
             Hint::ContinuousRange(inner) => inner.apply(line),

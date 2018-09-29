@@ -2,6 +2,7 @@ use std::iter;
 
 use puzzle::Line;
 use puzzle::LineHint;
+use puzzle::LineMut;
 use puzzle::LinePass;
 
 pub trait ClueExt {
@@ -47,7 +48,7 @@ impl LineHint for Unreachable {
         line.range_contains_uncrossed(0..self.reachable_start)
             || line.range_contains_uncrossed(self.reachable_end..len)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         let len = line.len();
         line.cross_range(0..self.reachable_start);
         line.cross_range(self.reachable_end..len);
@@ -64,7 +65,7 @@ impl LineHint for Kernel {
     fn check(&self, line: &Line) -> bool {
         line.range_contains_unfilled(self.kernel_start..self.kernel_end)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         line.fill_range(self.kernel_start..self.kernel_end);
     }
 }
@@ -80,7 +81,7 @@ impl LineHint for Termination {
         (self.range_start > 0 && !line.is_crossed(self.range_start - 1))
             || (self.range_end < line.len() && !line.is_crossed(self.range_end))
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         if self.range_start > 0 {
             line.cross(self.range_start - 1);
         }
@@ -103,7 +104,7 @@ impl LineHint for TurfNearSingleton {
         line.range_contains_unfilled(self.found_start..self.kernel_start)
             || line.range_contains_uncrossed(self.reachable_end..self.turf_end)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         line.fill_range(self.found_start..self.kernel_start);
         line.cross_range(self.reachable_end..self.turf_end);
     }
@@ -122,7 +123,7 @@ impl LineHint for TurfFarSingleton {
         line.range_contains_uncrossed(self.turf_start..self.reachable_start)
             || line.range_contains_unfilled(self.kernel_end..self.found_end)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         line.cross_range(self.turf_start..self.reachable_start);
         line.fill_range(self.kernel_end..self.found_end);
     }
@@ -144,7 +145,7 @@ impl LineHint for TurfPair {
             || line.range_contains_unfilled(self.found_start + 1..self.found_end - 1)
             || line.range_contains_uncrossed(self.reachable_end..self.turf_end)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         line.cross_range(self.turf_start..self.reachable_start);
         line.fill_range(self.found_start + 1..self.found_end - 1);
         line.cross_range(self.reachable_end..self.turf_end);
@@ -164,7 +165,7 @@ impl LineHint for TurfSingleton {
         line.range_contains_uncrossed(self.turf_start..self.reachable_start)
             || line.range_contains_uncrossed(self.reachable_end..self.turf_end)
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         line.cross_range(self.turf_start..self.reachable_start);
         line.cross_range(self.reachable_end..self.turf_end);
     }
@@ -193,7 +194,7 @@ impl LineHint for ContinuousRangeHint {
             ContinuousRangeHint::TurfSingleton(inner) => inner.check(line),
         }
     }
-    fn apply(&self, line: &mut Line) {
+    fn apply(&self, line: &mut LineMut) {
         match self {
             ContinuousRangeHint::Unreachable(inner) => inner.apply(line),
             ContinuousRangeHint::Kernel(inner) => inner.apply(line),
