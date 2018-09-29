@@ -61,6 +61,8 @@ pub trait LinePass: fmt::Debug {
 }
 
 pub trait LinePassExt<H: LineHint> {
+    fn run_horz(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
+    fn run_vert(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
     fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>>;
     fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>>;
     fn apply(&self, orientation: &Orientation, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
@@ -72,33 +74,11 @@ pub trait LinePassExt<H: LineHint> {
 }
 
 impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
-    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
-        let mut hints = vec![];
-        for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
-            let mut line = HorzLine {
-                grid: &mut puzzle.grid,
-                y,
-            };
-            for line_hint in self.run(clue.0.as_slice(), &line) {
-                let hint = Hint {
-                    orientation: Orientation::Horz,
-                    line: y,
-                    line_hint,
-                };
-                hints.push(hint);
-            }
-        }
-        for hint in &hints {
-            hint.apply(puzzle);
-        }
-        //println!("\nAfter horz line:\n{}", puzzle);
-        hints
-    }
-    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
+    fn run_vert(&self, puzzle: &Puzzle) -> Vec<Hint<H>> {
         let mut hints = vec![];
         for (x, clue) in puzzle.vert_clues.0.iter().enumerate() {
             let mut line = VertLine {
-                grid: &mut puzzle.grid,
+                grid: &puzzle.grid,
                 x,
             };
             for line_hint in self.run(clue.0.as_slice(), &line) {
@@ -110,10 +90,43 @@ impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
                 hints.push(hint);
             }
         }
+        hints
+    }
+
+    fn run_horz(&self, puzzle: &Puzzle) -> Vec<Hint<H>> {
+        let mut hints = vec![];
+        for (y, clue) in puzzle.horz_clues.0.iter().enumerate() {
+            let mut line = HorzLine {
+                grid: &puzzle.grid,
+                y,
+            };
+            for line_hint in self.run(clue.0.as_slice(), &line) {
+                let hint = Hint {
+                    orientation: Orientation::Horz,
+                    line: y,
+                    line_hint,
+                };
+                hints.push(hint);
+            }
+        }
+        hints
+    }
+
+    fn apply_vert(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
+        let hints = self.run_vert(puzzle);
         for hint in &hints {
             hint.apply(puzzle);
         }
         //println!("\nAfter vert line:\n{}", puzzle);
+        hints
+    }
+
+    fn apply_horz(&self, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
+        let hints = self.run_horz(puzzle);
+        for hint in &hints {
+            hint.apply(puzzle);
+        }
+        //println!("\nAfter horz line:\n{}", puzzle);
         hints
     }
 }
