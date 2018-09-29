@@ -63,25 +63,19 @@ pub trait LinePass: fmt::Debug {
 pub trait LinePassExt<H: LineHint> {
     fn run_vert(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
     fn run_horz(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
-    fn apply(&self, orientation: &Orientation, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
+    fn run_puzzle(&self, orientation: &Orientation, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
         match orientation {
-            Orientation::Vert => {
-                let hints = self.run_vert(puzzle);
-                for hint in &hints {
-                    hint.apply(puzzle);
-                }
-                //println!("\nAfter vert line:\n{}", puzzle);
-                hints
-            }
-            Orientation::Horz => {
-                let hints = self.run_horz(puzzle);
-                for hint in &hints {
-                    hint.apply(puzzle);
-                }
-                //println!("\nAfter horz line:\n{}", puzzle);
-                hints
-            }
+            Orientation::Vert => self.run_vert(puzzle),
+            Orientation::Horz => self.run_horz(puzzle),
         }
+    }
+    fn apply(&self, orientation: &Orientation, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
+        let hints = self.run_puzzle(orientation, puzzle);
+        for hint in &hints {
+            hint.apply(puzzle);
+        }
+        // println!( "\nAfter {:?} line:\n{}", orientation, Theme::Unicode.view(puzzle));
+        hints
     }
 }
 
