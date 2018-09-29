@@ -15,7 +15,7 @@ pub trait LineHint: fmt::Debug {
     fn apply(&self, line: &mut LineMut);
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Orientation {
     Horz,
     Vert,
@@ -37,7 +37,7 @@ pub struct Hint<H: LineHint> {
 }
 
 impl<H: LineHint> Hint<H> {
-    fn apply<'a>(&self, puzzle: &mut Puzzle<'a>) {
+    pub fn apply<'a>(&self, puzzle: &mut Puzzle<'a>) {
         match self.orientation {
             Orientation::Vert => {
                 self.line_hint.apply(&mut VertLineMut {
@@ -63,7 +63,7 @@ pub trait LinePass: fmt::Debug {
 pub trait LinePassExt<H: LineHint> {
     fn run_vert(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
     fn run_horz(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
-    fn run_puzzle(&self, orientation: &Orientation, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
+    fn run_puzzle(&self, orientation: &Orientation, puzzle: &Puzzle) -> Vec<Hint<H>> {
         match orientation {
             Orientation::Vert => self.run_vert(puzzle),
             Orientation::Horz => self.run_horz(puzzle),

@@ -24,7 +24,6 @@ use pass::DiscreteRangeHint;
 use pass::DiscreteRangePass;
 use pest::Parser;
 use puzzle::LineMut;
-use puzzle::LinePass;
 use puzzle::LinePassExt;
 use puzzle::Orientation;
 use puzzle::Puzzle;
@@ -40,27 +39,6 @@ struct Opt {
     /// Select display theme
     #[structopt(short = "t", long = "theme", default_value = "unicode")]
     theme: Theme,
-}
-
-fn apply<T: LinePass>(
-    puzzle: &mut Puzzle,
-    pass: &T,
-    orientation: &Orientation,
-    theme: &Theme,
-    pass_num: usize,
-) -> bool {
-    let hints = pass.apply(orientation, puzzle);
-    let is_dirty = !hints.is_empty();
-    if *theme != Theme::Brief {
-        println!("\n{:?} {:?} ({}):", pass, orientation, pass_num);
-        for hint in hints {
-            println!("{:?}", hint);
-        }
-    }
-    if is_dirty {
-        println!("{}", theme.view(puzzle));
-    }
-    is_dirty
 }
 
 #[derive(Debug)]
@@ -119,10 +97,58 @@ impl puzzle::LinePass for Pass {
     }
 }
 
+struct Solver<'a> {
+    cur_p: usize,
+    cur_o: usize,
+    fail_count: usize,
+    passes: &'a [Pass],
+}
+
+impl<'a> Solver<'a> {
+    fn next(
+        &mut self,
+        puzzle: &Puzzle<'a>,
+    ) -> Option<(&'a Pass, Orientation, Vec<puzzle::Hint<Hint>>)> {
+        let orientations = Orientation::all();
+        if let Some(pass) = self.passes.get(self.cur_p) {
+            let orientation = &orientations[self.cur_o];
+            let hints = pass.run_puzzle(orientation, puzzle);
+
+            if hints.is_empty() {
+                self.fail_count += 1;
+            } else {
+                self.fail_count = 0;
+                if self.cur_p > 0 {
+                    self.cur_p = 1;
+                }
+            }
+
+            self.cur_o = 1 - self.cur_o;
+            if self.fail_count >= 2 {
+                self.cur_p += 1;
+                self.fail_count = 0;
+            }
+            if let Pass::CrowdedClue(_) = pass {
+                if self.cur_o == 0 {
+                    self.cur_p = 1;
+                }
+            }
+
+            return Some((pass, *orientation, hints));
+        }
+        None
+    }
+}
+
 fn main() {
     let opt = Opt::from_args();
 
     let stdin = io::stdin();
+    let passes: [Pass; 3] = [
+        Pass::CrowdedClue(CrowdedCluePass),
+        Pass::ContinuousRange(ContinuousRangePass),
+        Pass::DiscreteRange(DiscreteRangePass),
+    ];
     for line in stdin.lock().lines() {
         let line = line.unwrap();
         let ast = NonoParser::parse(Rule::puzzle, &line)
@@ -134,39 +160,29 @@ fn main() {
             Ok(mut puzzle) => {
                 let mut pass_counter = 0;
 
-                let passes: [Pass; 3] = [
-                    Pass::CrowdedClue(CrowdedCluePass),
-                    Pass::ContinuousRange(ContinuousRangePass),
-                    Pass::DiscreteRange(DiscreteRangePass),
-                ];
-                let orientations = Orientation::all();
+                let mut solver = Solver {
+                    cur_p: 0,
+                    cur_o: 0,
+                    fail_count: 0,
+                    passes: &passes,
+                };
 
-                let mut cur_p = 0;
-                let mut cur_o = 0;
-                let mut fail_count = 0;
-                'outer: while let Some(pass) = passes.get(cur_p) {
-                    let orientation = &orientations[cur_o];
+                while let Some((pass, orientation, hints)) = solver.next(&puzzle) {
+                    for hint in &hints {
+                        hint.apply(&mut puzzle);
+                    }
+
                     pass_counter += 1;
-                    if apply(&mut puzzle, pass, &orientation, &opt.theme, pass_counter) {
+                    if opt.theme != Theme::Brief {
+                        println!("\n{:?} {:?} ({}):", pass, orientation, pass_counter);
+                        for hint in &hints {
+                            println!("{:?}", hint);
+                        }
+                    }
+                    if !hints.is_empty() {
+                        println!("{}", opt.theme.view(&puzzle));
                         if puzzle.is_complete() {
-                            break 'outer;
-                        }
-                        fail_count = 0;
-                        if cur_p > 0 {
-                            cur_p = 1;
-                        }
-                    } else {
-                        fail_count += 1;
-                    }
-
-                    cur_o = 1 - cur_o;
-                    if fail_count >= 2 {
-                        cur_p += 1;
-                        fail_count = 0;
-                    }
-                    if let Pass::CrowdedClue(_) = pass {
-                        if cur_o == 0 {
-                            cur_p = 1;
+                            break;
                         }
                     }
                 }
