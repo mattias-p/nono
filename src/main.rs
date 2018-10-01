@@ -23,9 +23,9 @@ use pass::CrowdedCluePass;
 use pass::DiscreteRangeHint;
 use pass::DiscreteRangePass;
 use pest::Parser;
+use puzzle::Axis;
 use puzzle::LineMut;
 use puzzle::LinePassExt;
-use puzzle::Orientation;
 use puzzle::Theme;
 use structopt::StructOpt;
 
@@ -98,7 +98,7 @@ impl puzzle::LinePass for Pass {
 
 struct Solver<'a> {
     cur_p: usize,
-    cur_o: usize,
+    cur_a: usize,
     fail_count: usize,
     passes: &'a [Pass],
 }
@@ -107,20 +107,20 @@ impl<'a> Solver<'a> {
     fn new(passes: &'a [Pass]) -> Self {
         Solver {
             cur_p: 0,
-            cur_o: 0,
+            cur_a: 0,
             fail_count: 0,
             passes,
         }
     }
 
-    fn initial(&mut self) -> (&'a Pass, Orientation) {
+    fn initial(&mut self) -> (&'a Pass, Axis) {
         (
             self.passes.get(self.cur_p).unwrap(),
-            Orientation::get(self.cur_o).unwrap(),
+            Axis::get(self.cur_a).unwrap(),
         )
     }
 
-    fn succeeded(&mut self) -> Option<(&'a Pass, Orientation)> {
+    fn succeeded(&mut self) -> Option<(&'a Pass, Axis)> {
         self.fail_count = 0;
 
         let last_p = self.cur_p;
@@ -132,28 +132,28 @@ impl<'a> Solver<'a> {
         }
     }
 
-    fn failed(&mut self) -> Option<(&'a Pass, Orientation)> {
+    fn failed(&mut self) -> Option<(&'a Pass, Axis)> {
         self.fail_count += 1;
 
         let last_p = self.cur_p;
         self.next(last_p)
     }
 
-    fn next(&mut self, last_p: usize) -> Option<(&'a Pass, Orientation)> {
+    fn next(&mut self, last_p: usize) -> Option<(&'a Pass, Axis)> {
         if self.fail_count >= 2 {
             self.cur_p += 1;
             self.fail_count = 0;
         }
 
-        self.cur_o = 1 - self.cur_o;
-        if self.cur_o == 0 {
+        self.cur_a = 1 - self.cur_a;
+        if self.cur_a == 0 {
             if let Some(Pass::CrowdedClue(_)) = self.passes.get(last_p) {
                 self.cur_p = 1;
             }
         }
 
         if let Some(pass) = self.passes.get(self.cur_p) {
-            return Some((pass, Orientation::get(self.cur_o).unwrap()));
+            return Some((pass, Axis::get(self.cur_a).unwrap()));
         } else {
             None
         }
@@ -184,19 +184,19 @@ fn main() {
 
                 let mut next_pass = Some(solver.initial());
                 let mut pass_counter = 0;
-                while let Some((pass, orientation)) = next_pass {
+                while let Some((pass, axis)) = next_pass {
                     if puzzle.is_complete() {
                         break;
                     }
 
                     pass_counter += 1;
-                    let hints = pass.run_puzzle(&orientation, &puzzle);
+                    let hints = pass.run_puzzle(&axis, &puzzle);
                     for hint in &hints {
                         hint.apply(&mut puzzle);
                     }
 
                     if opt.theme != Theme::Brief {
-                        println!("{:?} {:?} ({})", pass, orientation, pass_counter);
+                        println!("{:?} {:?} ({})", pass, axis, pass_counter);
                         for hint in &hints {
                             println!("{:?}", hint);
                         }

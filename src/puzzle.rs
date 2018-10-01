@@ -16,14 +16,14 @@ pub trait LineHint: fmt::Debug {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Orientation {
+pub enum Axis {
     Horz,
     Vert,
 }
 
-static ORIENTATIONS: [Orientation; 2] = [Orientation::Horz, Orientation::Vert];
+static ORIENTATIONS: [Axis; 2] = [Axis::Horz, Axis::Vert];
 
-impl Orientation {
+impl Axis {
     pub fn get(index: usize) -> Option<Self> {
         ORIENTATIONS.get(index).cloned()
     }
@@ -31,21 +31,21 @@ impl Orientation {
 
 #[derive(Debug)]
 pub struct Hint<H: LineHint> {
-    orientation: Orientation,
+    axis: Axis,
     line: usize,
     line_hint: Box<H>,
 }
 
 impl<H: LineHint> Hint<H> {
     pub fn apply<'a>(&self, puzzle: &mut Puzzle<'a>) {
-        match self.orientation {
-            Orientation::Vert => {
+        match self.axis {
+            Axis::Vert => {
                 self.line_hint.apply(&mut VertLineMut {
                     grid: &mut puzzle.grid,
                     x: self.line,
                 });
             }
-            Orientation::Horz => {
+            Axis::Horz => {
                 self.line_hint.apply(&mut HorzLineMut {
                     grid: &mut puzzle.grid,
                     y: self.line,
@@ -63,18 +63,18 @@ pub trait LinePass: fmt::Debug {
 pub trait LinePassExt<H: LineHint> {
     fn run_vert(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
     fn run_horz(&self, puzzle: &Puzzle) -> Vec<Hint<H>>;
-    fn run_puzzle(&self, orientation: &Orientation, puzzle: &Puzzle) -> Vec<Hint<H>> {
-        match orientation {
-            Orientation::Vert => self.run_vert(puzzle),
-            Orientation::Horz => self.run_horz(puzzle),
+    fn run_puzzle(&self, axis: &Axis, puzzle: &Puzzle) -> Vec<Hint<H>> {
+        match axis {
+            Axis::Vert => self.run_vert(puzzle),
+            Axis::Horz => self.run_horz(puzzle),
         }
     }
-    fn apply(&self, orientation: &Orientation, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
-        let hints = self.run_puzzle(orientation, puzzle);
+    fn apply(&self, axis: &Axis, puzzle: &mut Puzzle) -> Vec<Hint<H>> {
+        let hints = self.run_puzzle(axis, puzzle);
         for hint in &hints {
             hint.apply(puzzle);
         }
-        // println!( "\nAfter {:?} line:\n{}", orientation, Theme::Unicode.view(puzzle));
+        // println!( "\nAfter {:?} line:\n{}", axis, Theme::Unicode.view(puzzle));
         hints
     }
 }
@@ -89,7 +89,7 @@ impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
             };
             for line_hint in self.run(clue.0.as_slice(), &line) {
                 let hint = Hint {
-                    orientation: Orientation::Vert,
+                    axis: Axis::Vert,
                     line: x,
                     line_hint,
                 };
@@ -108,7 +108,7 @@ impl<H: LineHint, T: LinePass<Hint = H>> LinePassExt<H> for T {
             };
             for line_hint in self.run(clue.0.as_slice(), &line) {
                 let hint = Hint {
-                    orientation: Orientation::Horz,
+                    axis: Axis::Horz,
                     line: y,
                     line_hint,
                 };
