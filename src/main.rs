@@ -114,10 +114,10 @@ impl<'a> Solver<'a> {
     }
 
     fn initial(&mut self) -> (&'a Pass, Orientation) {
-        let pass = self.passes.get(self.cur_p).unwrap();
-        let orientations = Orientation::all();
-        let orientation = &orientations[self.cur_o];
-        (pass, *orientation)
+        (
+            self.passes.get(self.cur_p).unwrap(),
+            Orientation::get(self.cur_o).unwrap(),
+        )
     }
 
     fn succeeded(&mut self) -> Option<(&'a Pass, Orientation)> {
@@ -153,9 +153,7 @@ impl<'a> Solver<'a> {
         }
 
         if let Some(pass) = self.passes.get(self.cur_p) {
-            let orientations = Orientation::all();
-            let orientation = &orientations[self.cur_o];
-            return Some((pass, *orientation));
+            return Some((pass, Orientation::get(self.cur_o).unwrap()));
         } else {
             None
         }

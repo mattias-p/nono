@@ -24,8 +24,8 @@ pub enum Orientation {
 static ORIENTATIONS: [Orientation; 2] = [Orientation::Horz, Orientation::Vert];
 
 impl Orientation {
-    pub fn all() -> &'static [Orientation; 2] {
-        &ORIENTATIONS
+    pub fn get(index: usize) -> Option<Self> {
+        ORIENTATIONS.get(index).cloned()
     }
 }
 
