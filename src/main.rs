@@ -26,7 +26,6 @@ use pest::Parser;
 use puzzle::LineMut;
 use puzzle::LinePassExt;
 use puzzle::Orientation;
-use puzzle::Puzzle;
 use puzzle::Theme;
 use structopt::StructOpt;
 
@@ -105,38 +104,61 @@ struct Solver<'a> {
 }
 
 impl<'a> Solver<'a> {
-    fn next(
-        &mut self,
-        puzzle: &Puzzle<'a>,
-    ) -> Option<(&'a Pass, Orientation, Vec<puzzle::Hint<Hint>>)> {
-        let orientations = Orientation::all();
-        if let Some(pass) = self.passes.get(self.cur_p) {
-            let orientation = &orientations[self.cur_o];
-            let hints = pass.run_puzzle(orientation, puzzle);
-
-            if hints.is_empty() {
-                self.fail_count += 1;
-            } else {
-                self.fail_count = 0;
-                if self.cur_p > 0 {
-                    self.cur_p = 1;
-                }
-            }
-
-            self.cur_o = 1 - self.cur_o;
-            if self.fail_count >= 2 {
-                self.cur_p += 1;
-                self.fail_count = 0;
-            }
-            if let Pass::CrowdedClue(_) = pass {
-                if self.cur_o == 0 {
-                    self.cur_p = 1;
-                }
-            }
-
-            return Some((pass, *orientation, hints));
+    fn new(passes: &'a [Pass]) -> Self {
+        Solver {
+            cur_p: 0,
+            cur_o: 0,
+            fail_count: 0,
+            passes,
         }
-        None
+    }
+
+    fn initial(&mut self) -> (&'a Pass, Orientation) {
+        let pass = self.passes.get(self.cur_p).unwrap();
+        let orientations = Orientation::all();
+        let orientation = &orientations[self.cur_o];
+        (pass, *orientation)
+    }
+
+    fn succeeded(&mut self) -> Option<(&'a Pass, Orientation)> {
+        self.fail_count = 0;
+
+        let last_p = self.cur_p;
+        if self.cur_p > 1 {
+            self.cur_p = 1;
+            self.next(last_p)
+        } else {
+            self.next(last_p)
+        }
+    }
+
+    fn failed(&mut self) -> Option<(&'a Pass, Orientation)> {
+        self.fail_count += 1;
+
+        let last_p = self.cur_p;
+        self.next(last_p)
+    }
+
+    fn next(&mut self, last_p: usize) -> Option<(&'a Pass, Orientation)> {
+        if self.fail_count >= 2 {
+            self.cur_p += 1;
+            self.fail_count = 0;
+        }
+
+        self.cur_o = 1 - self.cur_o;
+        if self.cur_o == 0 {
+            if let Some(Pass::CrowdedClue(_)) = self.passes.get(last_p) {
+                self.cur_p = 1;
+            }
+        }
+
+        if let Some(pass) = self.passes.get(self.cur_p) {
+            let orientations = Orientation::all();
+            let orientation = &orientations[self.cur_o];
+            return Some((pass, *orientation));
+        } else {
+            None
+        }
     }
 }
 
@@ -158,33 +180,38 @@ fn main() {
             .unwrap();
         match puzzle::Puzzle::try_from_ast(ast) {
             Ok(mut puzzle) => {
+                let mut solver = Solver::new(&passes);
+
+                println!("{}", opt.theme.view(&puzzle));
+
+                let mut next_pass = Some(solver.initial());
                 let mut pass_counter = 0;
+                while let Some((pass, orientation)) = next_pass {
+                    if puzzle.is_complete() {
+                        break;
+                    }
 
-                let mut solver = Solver {
-                    cur_p: 0,
-                    cur_o: 0,
-                    fail_count: 0,
-                    passes: &passes,
-                };
-
-                while let Some((pass, orientation, hints)) = solver.next(&puzzle) {
+                    pass_counter += 1;
+                    let hints = pass.run_puzzle(&orientation, &puzzle);
                     for hint in &hints {
                         hint.apply(&mut puzzle);
                     }
 
-                    pass_counter += 1;
                     if opt.theme != Theme::Brief {
-                        println!("\n{:?} {:?} ({}):", pass, orientation, pass_counter);
+                        println!("{:?} {:?} ({})", pass, orientation, pass_counter);
                         for hint in &hints {
                             println!("{:?}", hint);
                         }
                     }
                     if !hints.is_empty() {
                         println!("{}", opt.theme.view(&puzzle));
-                        if puzzle.is_complete() {
-                            break;
-                        }
                     }
+
+                    next_pass = if hints.is_empty() {
+                        solver.failed()
+                    } else {
+                        solver.succeeded()
+                    };
                 }
             }
             Err(e) => panic!("{}", e),
