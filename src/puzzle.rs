@@ -336,8 +336,8 @@ impl Grid {
             crossed: FixedBitSet::with_capacity(width * height),
         }
     }
-    pub fn horz_mut(&mut self, y: usize) -> HorzLine {
-        HorzLine { grid: self, y }
+    pub fn horz_mut(&mut self, y: usize) -> HorzLineMut {
+        HorzLineMut { grid: self, y }
     }
     fn index(&self, x: usize, y: usize) -> usize {
         assert!(x < self.width);
