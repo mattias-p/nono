@@ -253,30 +253,27 @@ mod tests {
 
     #[test]
     fn puzzle() {
-        fn deser(s: &str) -> Vec<Puzzle> {
-            NonoParser::parse(Rule::puzzle, s)
+        fn test_roundtrip(orig: Puzzle) {
+            let s = format!("{}", &orig);
+            let items: Vec<_> = NonoParser::parse(Rule::puzzle, &s)
                 .unwrap_or_else(|e| panic!("{}", e))
                 .map(Puzzle::from)
-                .collect()
+                .collect();
+            assert_eq!(items.as_slice(), [orig]);
         }
-        test_roundtrip(
-            deser,
-            Puzzle {
-                vert_clues: Cow::Owned(ClueList(vec![Clue(vec![]), Clue(vec![1])])),
-                horz_clues: Cow::Owned(ClueList(vec![Clue(vec![1]), Clue(vec![])])),
-                grid: None,
-            },
-        );
-        test_roundtrip(
-            deser,
-            Puzzle {
-                vert_clues: Cow::Owned(ClueList(vec![Clue(vec![]), Clue(vec![1])])),
-                horz_clues: Cow::Owned(ClueList(vec![Clue(vec![1]), Clue(vec![])])),
-                grid: Some(Grid(vec![
-                    GridLine(vec![Cell::Undecided, Cell::Filled]),
-                    GridLine(vec![Cell::Crossed, Cell::Impossible]),
-                ])),
-            },
-        );
+
+        test_roundtrip(Puzzle {
+            vert_clues: Cow::Owned(ClueList(vec![Clue(vec![]), Clue(vec![1])])),
+            horz_clues: Cow::Owned(ClueList(vec![Clue(vec![1]), Clue(vec![])])),
+            grid: None,
+        });
+        test_roundtrip(Puzzle {
+            vert_clues: Cow::Owned(ClueList(vec![Clue(vec![]), Clue(vec![1])])),
+            horz_clues: Cow::Owned(ClueList(vec![Clue(vec![1]), Clue(vec![])])),
+            grid: Some(Grid(vec![
+                GridLine(vec![Cell::Undecided, Cell::Filled]),
+                GridLine(vec![Cell::Crossed, Cell::Impossible]),
+            ])),
+        });
     }
 }
