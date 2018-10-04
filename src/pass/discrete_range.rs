@@ -400,4 +400,33 @@ mod tests {
             }))]
         );
     }
+
+    #[test]
+    fn run8() {
+        let mut grid = Grid::new(30, 1);
+        let mut line = grid.horz_mut(0);
+        line.cross_range(0..4);
+        line.fill(4);
+        line.cross(5);
+        line.fill_range(6..9);
+        line.cross(9);
+        line.fill_range(10..15);
+        line.cross_range(15..18);
+        line.fill_range(19..21);
+        line.cross(24);
+        let hints = DiscreteRangePass.run(&[1, 3, 5, 1, 2, 2], &line);
+        assert_eq!(
+            hints,
+            vec![
+                Box::new(DiscreteRangeHint::CrossedRun(CrossedRun {
+                    start: 15,
+                    end: 19,
+                })),
+                Box::new(DiscreteRangeHint::CrossedRun(CrossedRun {
+                    start: 21,
+                    end: 22,
+                }))
+            ]
+        );
+    }
 }
