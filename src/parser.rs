@@ -262,16 +262,16 @@ mod tests {
         test_roundtrip(
             deser,
             Puzzle {
-                vert_clues: ClueList(vec![Clue(vec![]), Clue(vec![1])]),
-                horz_clues: ClueList(vec![Clue(vec![1]), Clue(vec![])]),
+                vert_clues: Cow::Owned(ClueList(vec![Clue(vec![]), Clue(vec![1])])),
+                horz_clues: Cow::Owned(ClueList(vec![Clue(vec![1]), Clue(vec![])])),
                 grid: None,
             },
         );
         test_roundtrip(
             deser,
             Puzzle {
-                vert_clues: ClueList(vec![Clue(vec![]), Clue(vec![1])]),
-                horz_clues: ClueList(vec![Clue(vec![1]), Clue(vec![])]),
+                vert_clues: Cow::Owned(ClueList(vec![Clue(vec![]), Clue(vec![1])])),
+                horz_clues: Cow::Owned(ClueList(vec![Clue(vec![1]), Clue(vec![])])),
                 grid: Some(Grid(vec![
                     GridLine(vec![Cell::Undecided, Cell::Filled]),
                     GridLine(vec![Cell::Crossed, Cell::Impossible]),
