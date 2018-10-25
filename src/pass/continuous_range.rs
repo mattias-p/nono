@@ -36,7 +36,7 @@ impl<'a> ClueExt for &'a [usize] {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Unreachable {
     reachable_start: usize,
     reachable_end: usize,
@@ -55,7 +55,7 @@ impl LineHint for Unreachable {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Kernel {
     kernel_start: usize,
     kernel_end: usize,
@@ -70,7 +70,7 @@ impl LineHint for Kernel {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Termination {
     range_start: usize,
     range_end: usize,
@@ -91,7 +91,7 @@ impl LineHint for Termination {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TurfNearSingleton {
     found_start: usize,
     kernel_start: usize,
@@ -110,7 +110,7 @@ impl LineHint for TurfNearSingleton {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TurfFarSingleton {
     turf_start: usize,
     reachable_start: usize,
@@ -129,7 +129,7 @@ impl LineHint for TurfFarSingleton {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TurfPair {
     turf_start: usize,
     reachable_start: usize,
@@ -152,7 +152,7 @@ impl LineHint for TurfPair {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TurfSingleton {
     turf_start: usize,
     reachable_start: usize,
@@ -171,7 +171,7 @@ impl LineHint for TurfSingleton {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ContinuousRangeHint {
     Unreachable(Unreachable),
     Kernel(Kernel),

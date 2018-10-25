@@ -206,6 +206,27 @@ pub trait Line {
     }
 }
 
+pub trait LineExt: Line {
+    fn view<'a>(&'a self) -> LineView;
+}
+
+impl<T: Line> LineExt for T {
+    fn view<'a>(&'a self) -> LineView {
+        LineView(self)
+    }
+}
+
+pub struct LineView<'a>(&'a Line);
+
+impl<'a> fmt::Display for LineView<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for i in 0..self.0.len() {
+            write!(f, "{}", self.0.get(i))?;
+        }
+        Ok(())
+    }
+}
+
 pub trait LineMut: Line {
     fn cross(&mut self, i: usize);
     fn fill(&mut self, i: usize);
@@ -602,6 +623,19 @@ impl<'a> fmt::Display for View<'a> {
         }
         Ok(())
     }
+}
+
+pub fn line_grid(s: &str) -> Grid {
+    use parser::NonoParser;
+    use parser::Rule;
+    use pest::Parser;
+    let s = format!("[{}||{}]", ";".repeat(s.len() - 1), s);
+    let ast = NonoParser::parse(Rule::puzzle, &s)
+        .unwrap_or_else(|e| panic!("{}", e))
+        .next()
+        .map(parser::Puzzle::from)
+        .unwrap();
+    Puzzle::try_from_ast(ast).unwrap().grid
 }
 
 #[cfg(test)]
