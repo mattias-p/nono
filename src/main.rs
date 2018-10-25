@@ -113,10 +113,7 @@ impl<'a> Solver<'a> {
     }
 
     fn initial(&mut self) -> (&'a Pass, Axis) {
-        (
-            self.passes.get(self.cur_p).unwrap(),
-            Axis::get(self.cur_a).unwrap(),
-        )
+        (&self.passes[self.cur_p], Axis::get(self.cur_a).unwrap())
     }
 
     fn succeeded(&mut self) -> Option<(&'a Pass, Axis)> {

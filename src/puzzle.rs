@@ -201,17 +201,17 @@ pub trait Line {
             focus -= 1;
         }
 
-        assert!(focus + number + 1 <= self.len() as isize);
+        assert!(focus + number < self.len() as isize);
         focus + number + 1
     }
 }
 
 pub trait LineExt: Line {
-    fn view<'a>(&'a self) -> LineView;
+    fn view(&self) -> LineView;
 }
 
 impl<T: Line> LineExt for T {
-    fn view<'a>(&'a self) -> LineView {
+    fn view(&self) -> LineView {
         LineView(self)
     }
 }
@@ -501,7 +501,7 @@ impl<'a> Puzzle<'a> {
         }
     }
 
-    pub fn into_ast(&self) -> parser::Puzzle {
+    pub fn as_ast(&self) -> parser::Puzzle {
         let h = self.horz_clues.0.len();
         let w = self.vert_clues.0.len();
         let mut grid_lines = Vec::with_capacity(w);
@@ -585,7 +585,7 @@ pub struct View<'a> {
 impl<'a> fmt::Display for View<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if *self.theme == Theme::Brief {
-            return self.puzzle.into_ast().fmt(f);
+            return self.puzzle.as_ast().fmt(f);
         }
 
         let w = self.puzzle.vert_clues.0.len();
@@ -600,7 +600,7 @@ impl<'a> fmt::Display for View<'a> {
                     write!(f, "  ")?;
                 }
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         for (y, clue) in self.puzzle.horz_clues.0.iter().enumerate() {
             for i in 0..max_horz_clue_len {
@@ -619,7 +619,7 @@ impl<'a> fmt::Display for View<'a> {
                 };
                 write!(f, " {}", ch)?;
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }

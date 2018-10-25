@@ -240,9 +240,9 @@ impl LinePass for ContinuousRangePass {
             .chain(range_ends.iter().rev().map(|e| e + 1))
             .zip(range_starts.iter())
             .map(|(prev_range_end, range_start)| prev_range_end.max(*range_start));
-        let range_ends = range_ends.iter().rev().map(|e| *e);
-        let range_starts = range_starts.iter().map(|e| *e);
-        let numbers = clue.iter().map(|e| *e);
+        let range_ends = range_ends.iter().rev().cloned();
+        let range_starts = range_starts.iter().cloned();
+        let numbers = clue.iter().cloned();
 
         for (number, range_start, range_end, turf_start, turf_end) in
             izip!(numbers, range_starts, range_ends, turf_starts, turf_ends)
